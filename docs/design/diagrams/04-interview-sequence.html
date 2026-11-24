@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyProjectManager · AI 검토·인터뷰 내부 흐름</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #FAFAF9;
+      --color-ink:     #1C1917;
+      --color-muted:   #57534E;
+      --color-accent:  #C2410C;
+      --font-sans:     'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif KR', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body { font-family: var(--font-sans); background: var(--color-paper); color: var(--color-ink);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 3rem 2rem; }
+    .frame { max-width: 1320px; width: 100%; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+    .eyebrow { font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--color-muted); margin-bottom: 0.5rem; }
+    h1 { font-family: var(--font-serif); font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem); font-weight: 400;
+      letter-spacing: -0.02em; line-height: 1.15; color: var(--color-ink); margin-bottom: 1.5rem; }
+    svg { width: 100%; min-width: 1280px; display: block; }
+    @media print { .diagram-container { overflow-x: visible; } svg { min-width: 0; } }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Sequence · 04 / 05</p>
+    <h1>AI 검토 안에서 에이전트들이 주고받는 것</h1>
+    <div class="diagram-container">
+<svg viewBox="0 0 1280 740" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="mpm-interview-seq-title mpm-interview-seq-desc">
+<title id="mpm-interview-seq-title">MyProjectManager AI 검토·인터뷰 내부 흐름</title>
+<desc id="mpm-interview-seq-desc">요청자의 검토 요청에 시스템 에이전트가 근거 있는 중복·해소 카드를 보여주고, 인터뷰를 계속하면 리드 에이전트가 최대 두 라운드 동안 질문하며(2차부터 분야 에이전트 병렬 호출), 대상 추천을 요청자가 확인해 제출하면 정리본이 만들어지는 순서.</desc>
+<defs>
+<marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#57534E"/></marker>
+<marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#C2410C"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#FAFAF9"/>
+<g stroke="rgba(28,25,23,0.30)" stroke-width="1" stroke-dasharray="3,4"><line x1="160" y1="88" x2="160" y2="660"/><line x1="460" y1="88" x2="460" y2="660"/><line x1="760" y1="88" x2="760" y2="660"/><line x1="1060" y1="88" x2="1060" y2="660"/></g>
+<rect x="112" y="264" width="996" height="216" rx="4" fill="rgba(28,25,23,0.02)" stroke="rgba(28,25,23,0.22)" stroke-width="1"/><rect x="112" y="264" width="132" height="16" rx="2" fill="#1C1917"/><text x="120" y="275" font-family="'Geist Mono', ui-monospace, monospace" font-size="8" font-weight="500" letter-spacing="1.2" fill="#FAFAF9">LOOP · ≤ 2 ROUNDS</text>
+<g fill="none" stroke="#57534E" stroke-width="1.2">
+<line x1="160" y1="136" x2="458" y2="136" marker-end="url(#arrow)"/>
+<line x1="460" y1="184" x2="162" y2="184" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<line x1="160" y1="232" x2="758" y2="232" marker-end="url(#arrow)"/>
+<line x1="760" y1="304" x2="1058" y2="304" stroke="#C2410C" marker-end="url(#arrow-accent)"/>
+<line x1="1060" y1="352" x2="762" y2="352" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<line x1="760" y1="400" x2="162" y2="400" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<line x1="160" y1="448" x2="758" y2="448" marker-end="url(#arrow)"/>
+<line x1="460" y1="528" x2="162" y2="528" stroke-dasharray="5,4" marker-end="url(#arrow)"/>
+<line x1="160" y1="576" x2="458" y2="576" marker-end="url(#arrow)"/>
+<path d="M460,608 L492,608 Q500,608 500,616 L500,624 Q500,632 492,632 L462,632" marker-end="url(#arrow)"/>
+</g>
+<rect x="282" y="112" width="56" height="16" fill="#FAFAF9"/><text x="310" y="124" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">검토 요청</text>
+<rect x="260" y="160" width="100" height="16" fill="#FAFAF9"/><text x="310" y="172" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">중복·해소 카드</text>
+<rect x="272" y="208" width="76" height="16" fill="#FAFAF9"/><text x="310" y="220" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">인터뷰 계속</text>
+<rect x="858" y="280" width="104" height="16" fill="#F5F5F4"/><text x="910" y="292" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#C2410C">병렬 호출 (2차)</text>
+<rect x="842" y="328" width="136" height="16" fill="#F5F5F4"/><text x="910" y="340" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">가설 · 질문 · 근거</text>
+<rect x="258" y="376" width="104" height="16" fill="#F5F5F4"/><text x="310" y="388" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">선택형 질문 ≤ 3</text>
+<rect x="248" y="424" width="124" height="16" fill="#F5F5F4"/><text x="310" y="436" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">답변 (선택지 위주)</text>
+<rect x="254" y="504" width="112" height="16" fill="#FAFAF9"/><text x="310" y="516" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">대상 추천 · 근거</text>
+<rect x="254" y="552" width="112" height="16" fill="#FAFAF9"/><text x="310" y="564" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">대상 확인 · 제출</text>
+<rect x="508" y="612" width="152" height="16" fill="#FAFAF9"/><text x="584" y="624" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">정리본 작성 → 대상별 큐</text>
+<rect x="80" y="40" width="160" height="48" rx="6" fill="#FAFAF9"/><rect x="80" y="40" width="160" height="48" rx="6" fill="#ffffff" stroke="#1C1917" stroke-width="1"/><text x="160" y="62" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="13" font-weight="600" fill="#1C1917">요청자</text><text x="160" y="77" text-anchor="middle" font-family="'Geist Mono', ui-monospace, monospace" font-size="9" fill="#57534E">requester</text>
+<rect x="380" y="40" width="160" height="48" rx="6" fill="#FAFAF9"/><rect x="380" y="40" width="160" height="48" rx="6" fill="#ffffff" stroke="#1C1917" stroke-width="1"/><text x="460" y="62" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="13" font-weight="600" fill="#1C1917">시스템 에이전트</text><text x="460" y="77" text-anchor="middle" font-family="'Geist Mono', ui-monospace, monospace" font-size="9" fill="#57534E">dedup · route · summary</text>
+<rect x="680" y="40" width="160" height="48" rx="6" fill="#FAFAF9"/><rect x="680" y="40" width="160" height="48" rx="6" fill="#ffffff" stroke="#1C1917" stroke-width="1"/><text x="760" y="62" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="13" font-weight="600" fill="#1C1917">리드 에이전트</text><text x="760" y="77" text-anchor="middle" font-family="'Geist Mono', ui-monospace, monospace" font-size="9" fill="#57534E">lead</text>
+<rect x="980" y="40" width="160" height="48" rx="6" fill="#FAFAF9"/><rect x="980" y="40" width="160" height="48" rx="6" fill="rgba(194,65,12,0.08)" stroke="#C2410C" stroke-width="1.2"/><text x="1060" y="62" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="13" font-weight="600" fill="#1C1917">분야 에이전트 ×N</text><text x="1060" y="77" text-anchor="middle" font-family="'Geist Mono', ui-monospace, monospace" font-size="9" fill="#C2410C">field · phase 2</text>
+<text x="112" y="700" text-anchor="start" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="400" fill="#57534E">1차는 LOOP 안에서 리드가 혼자 질문을 만든다. 카드와 추천은 근거가 있을 때만 나온다.</text>
+<text x="112" y="720" text-anchor="start" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="400" fill="#57534E">모든 호출은 ai_judgments에 남고, 분야 에이전트 판단은 리드 판단 아래(parentJudgmentId)로 묶인다.</text>
+<line x1="880" y1="696" x2="916" y2="696" stroke="#57534E" stroke-width="1.2" marker-end="url(#arrow)"/><text x="924" y="700" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">호출</text><line x1="972" y1="696" x2="1008" y2="696" stroke="#57534E" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#arrow)"/><text x="1016" y="700" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">응답</text>
+</svg>
+    </div>
+  </div>
+</body>
+</html>

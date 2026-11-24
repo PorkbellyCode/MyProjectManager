@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyProjectManager · 전체 워크플로우</title>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&family=Noto+Serif+KR:wght@400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --color-paper:   #FAFAF9;
+      --color-ink:     #1C1917;
+      --color-muted:   #57534E;
+      --color-accent:  #C2410C;
+      --font-sans:     'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif KR', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace;
+    }
+    body { font-family: var(--font-sans); background: var(--color-paper); color: var(--color-ink);
+      min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 3rem 2rem; }
+    .frame { max-width: 1320px; width: 100%; }
+    .diagram-container { width: 100%; overflow-x: auto; }
+    .eyebrow { font-family: var(--font-mono); font-size: 0.66rem; font-weight: 500; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--color-muted); margin-bottom: 0.5rem; }
+    h1 { font-family: var(--font-serif); font-size: clamp(1.5rem, 2.4vw + 0.75rem, 2rem); font-weight: 400;
+      letter-spacing: -0.02em; line-height: 1.15; color: var(--color-ink); margin-bottom: 1.5rem; }
+    svg { width: 100%; min-width: 1280px; display: block; }
+    @media print { .diagram-container { overflow-x: visible; } svg { min-width: 0; } }
+  </style>
+</head>
+<body>
+  <div class="frame">
+    <p class="eyebrow">Swimlane · 01 / 05</p>
+    <h1>티켓 한 장이 지나가는 길</h1>
+    <div class="diagram-container">
+<svg viewBox="0 0 1280 580" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="mpm-workflow-title mpm-workflow-desc">
+<title id="mpm-workflow-title">MyProjectManager 전체 워크플로우</title>
+<desc id="mpm-workflow-desc">요청자가 작성한 티켓이 AI의 중복·해소 확인과 인터뷰를 거쳐, 요청자가 대상을 확인해 제출하면 정리본이 만들어지고, 사람·그룹 대상은 개발자가, 대상 없는 티켓은 리드가 지정해 처리한 뒤 요청자 확인으로 종결되는 흐름.</desc>
+<defs>
+<marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#57534E"/></marker>
+<marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#C2410C"/></marker>
+</defs>
+<rect width="100%" height="100%" fill="#FAFAF9"/>
+<g stroke="rgba(28,25,23,0.12)" stroke-width="1"><line x1="0" y1="24" x2="1280" y2="24"/><line x1="0" y1="144" x2="1280" y2="144"/><line x1="0" y1="264" x2="1280" y2="264"/><line x1="0" y1="384" x2="1280" y2="384"/><line x1="0" y1="504" x2="1280" y2="504"/><line x1="160" y1="24" x2="160" y2="504"/></g>
+<text x="24" y="84" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="14" font-weight="600" fill="#1C1917">요청자</text><text x="24" y="100" font-family="'Geist Mono', ui-monospace, monospace" font-size="8" font-weight="500" letter-spacing="1.4" fill="#57534E">REQUESTER</text>
+<text x="24" y="204" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="14" font-weight="600" fill="#1C1917">AI 에이전트</text><text x="24" y="220" font-family="'Geist Mono', ui-monospace, monospace" font-size="8" font-weight="500" letter-spacing="1.4" fill="#57534E">AGENTS</text>
+<text x="24" y="324" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="14" font-weight="600" fill="#1C1917">리드</text><text x="24" y="340" font-family="'Geist Mono', ui-monospace, monospace" font-size="8" font-weight="500" letter-spacing="1.4" fill="#57534E">LEAD</text>
+<text x="24" y="444" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="14" font-weight="600" fill="#1C1917">개발자</text><text x="24" y="460" font-family="'Geist Mono', ui-monospace, monospace" font-size="8" font-weight="500" letter-spacing="1.4" fill="#57534E">DEVELOPER</text>
+<g fill="none" stroke="#57534E" stroke-width="1.2">
+<path d="M260,108 L260,196 Q260,204 268,204 L366,204" marker-end="url(#arrow)"/>
+<line x1="436" y1="180" x2="436" y2="110" marker-end="url(#arrow)"/>
+<line x1="504" y1="204" x2="542" y2="204" marker-end="url(#arrow)"/>
+<line x1="612" y1="180" x2="612" y2="110" stroke="#C2410C" marker-end="url(#arrow-accent)"/>
+<path d="M680,84 L780,84 Q788,84 788,92 L788,178" marker-end="url(#arrow)"/>
+<path d="M788,228 L788,436 Q788,444 796,444 L894,444" marker-end="url(#arrow)"/>
+<path d="M856,204 L956,204 Q964,204 964,212 L964,298" marker-end="url(#arrow)"/>
+<line x1="964" y1="348" x2="964" y2="418" marker-end="url(#arrow)"/>
+<path d="M1032,444 L1132,444 Q1140,444 1140,436 L1140,110" marker-end="url(#arrow)"/>
+</g>
+<rect x="446" y="136" width="112" height="16" fill="#FAFAF9"/><text x="502" y="148" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">같은 건 · 해결됨</text>
+<rect x="622" y="136" width="68" height="16" fill="#FAFAF9"/><text x="656" y="148" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#C2410C">선택형 질문</text>
+<rect x="798" y="128" width="32" height="16" fill="#FAFAF9"/><text x="814" y="140" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">제출</text>
+<rect x="974" y="248" width="64" height="16" fill="#FAFAF9"/><text x="1006" y="260" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">대상 없음</text>
+<rect x="798" y="376" width="112" height="16" fill="#FAFAF9"/><text x="854" y="388" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">사람 · 그룹 대상</text>
+<rect x="974" y="376" width="64" height="16" fill="#FAFAF9"/><text x="1006" y="388" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">대상 지정</text>
+<rect x="1066" y="248" width="64" height="16" fill="#FAFAF9"/><text x="1098" y="260" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">처리 완료</text>
+<rect x="192" y="60" width="136" height="48" rx="6" fill="#FAFAF9"/><rect x="192" y="60" width="136" height="48" rx="6" fill="#ffffff" stroke="#1C1917" stroke-width="1"/><text x="260" y="82" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="13" font-weight="600" fill="#1C1917">티켓 작성</text><text x="260" y="97" text-anchor="middle" font-family="'Geist Mono', ui-monospace, monospace" font-size="9" fill="#57534E">draft</text>
+<rect x="368" y="60" width="136" height="48" rx="6" fill="#FAFAF9"/><rect x="368" y="60" width="136" height="48" rx="6" fill="rgba(28,25,23,0.02)" stroke="rgba(28,25,23,0.30)" stroke-width="1" stroke-dasharray="4,3"/><text x="436" y="82" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="13" font-weight="600" fill="#57534E">철회 · 기존 티켓 합류</text><text x="436" y="97" text-anchor="middle" font-family="'Geist Mono', ui-monospace, monospace" font-size="8" fill="#57534E">withdrawn_ai_resolved</text>
+<rect x="544" y="60" width="136" height="48" rx="6" fill="#FAFAF9"/><rect x="544" y="60" width="136" height="48" rx="6" fill="#ffffff" stroke="#1C1917" stroke-width="1"/><text x="612" y="82" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="13" font-weight="600" fill="#1C1917">답변 · 대상 확인</text><text x="612" y="97" text-anchor="middle" font-family="'Geist Mono', ui-monospace, monospace" font-size="9" fill="#57534E">awaiting_requester</text>
+<rect x="1072" y="60" width="136" height="48" rx="6" fill="#FAFAF9"/><rect x="1072" y="60" width="136" height="48" rx="6" fill="#ffffff" stroke="#1C1917" stroke-width="1"/><text x="1140" y="82" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="13" font-weight="600" fill="#1C1917">확인 · 종결</text><text x="1140" y="97" text-anchor="middle" font-family="'Geist Mono', ui-monospace, monospace" font-size="9" fill="#57534E">resolved → closed</text>
+<rect x="368" y="180" width="136" height="48" rx="6" fill="#FAFAF9"/><rect x="368" y="180" width="136" height="48" rx="6" fill="#ffffff" stroke="#1C1917" stroke-width="1"/><text x="436" y="202" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="13" font-weight="600" fill="#1C1917">중복 · 해소 확인</text><text x="436" y="217" text-anchor="middle" font-family="'Geist Mono', ui-monospace, monospace" font-size="9" fill="#57534E">ai_reviewing</text>
+<rect x="544" y="180" width="136" height="48" rx="6" fill="#FAFAF9"/><rect x="544" y="180" width="136" height="48" rx="6" fill="rgba(194,65,12,0.08)" stroke="#C2410C" stroke-width="1.2"/><text x="612" y="202" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="13" font-weight="600" fill="#1C1917">✦ AI 인터뷰</text><text x="612" y="217" text-anchor="middle" font-family="'Geist Mono', ui-monospace, monospace" font-size="9" fill="#C2410C">≤2 rounds · ≤3 Q</text>
+<rect x="720" y="180" width="136" height="48" rx="6" fill="#FAFAF9"/><rect x="720" y="180" width="136" height="48" rx="6" fill="#ffffff" stroke="#1C1917" stroke-width="1"/><text x="788" y="202" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="13" font-weight="600" fill="#1C1917">정리본</text><text x="788" y="217" text-anchor="middle" font-family="'Geist Mono', ui-monospace, monospace" font-size="9" fill="#57534E">summarizer</text>
+<rect x="896" y="300" width="136" height="48" rx="6" fill="#FAFAF9"/><rect x="896" y="300" width="136" height="48" rx="6" fill="rgba(28,25,23,0.05)" stroke="#57534E" stroke-width="1"/><text x="964" y="322" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="13" font-weight="600" fill="#1C1917">리드 큐</text><text x="964" y="337" text-anchor="middle" font-family="'Geist Mono', ui-monospace, monospace" font-size="9" fill="#57534E">queued · lead</text>
+<rect x="896" y="420" width="136" height="48" rx="6" fill="#FAFAF9"/><rect x="896" y="420" width="136" height="48" rx="6" fill="#ffffff" stroke="#1C1917" stroke-width="1"/><text x="964" y="442" text-anchor="middle" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="13" font-weight="600" fill="#1C1917">가져가기 · 처리</text><text x="964" y="457" text-anchor="middle" font-family="'Geist Mono', ui-monospace, monospace" font-size="9" fill="#57534E">in_progress</text>
+<rect x="192" y="536" width="20" height="12" rx="2" fill="#ffffff" stroke="#1C1917"/><text x="220" y="546" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">처리 단계</text>
+<rect x="300" y="536" width="20" height="12" rx="2" fill="rgba(194,65,12,0.08)" stroke="#C2410C"/><text x="328" y="546" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">AI 산출물 (포커스)</text>
+<rect x="464" y="536" width="20" height="12" rx="2" fill="rgba(28,25,23,0.05)" stroke="#57534E"/><text x="492" y="546" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">대상을 기다리는 큐</text>
+<rect x="624" y="536" width="20" height="12" rx="2" fill="rgba(28,25,23,0.02)" stroke="rgba(28,25,23,0.30)" stroke-dasharray="4,3"/><text x="652" y="546" font-family="'Geist', 'IBM Plex Sans KR', 'Noto Sans KR', sans-serif" font-size="12" font-weight="500" fill="#57534E">이탈 (요청자가 선택)</text>
+<text x="792" y="546" font-family="'Geist Mono', ui-monospace, monospace" font-size="9" fill="#57534E">mono = ticket status</text>
+</svg>
+    </div>
+  </div>
+</body>
+</html>
