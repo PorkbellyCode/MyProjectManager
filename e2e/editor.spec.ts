@@ -169,6 +169,30 @@ test("업로드가 실패하면 '업로드 실패, 다시 시도'가 보이고 �
   expect(calls).toBe(2);
 });
 
+test("4MB를 넘는 PNG를 놓으면 안내가 보이고 요청은 보내지 않는다", async ({ page }) => {
+  await login(page);
+  const requests: string[] = [];
+  page.on("request", (r) => {
+    if (r.url().includes("/api/uploads")) requests.push(r.url());
+  });
+  await openEditor(page);
+  const box = (await page.getByRole("textbox", { name: "요청 내용" }).boundingBox())!;
+  await page.evaluate(
+    ({ x, y }) => {
+      const dt = new DataTransfer();
+      dt.items.add(new File([new Uint8Array(4 * 1024 * 1024 + 1)], "큰.png", { type: "image/png" }));
+      document.querySelector(".ProseMirror")!.dispatchEvent(new DragEvent("drop", { dataTransfer: dt, clientX: x, clientY: y, bubbles: true, cancelable: true }));
+    },
+    { x: box.x + 20, y: box.y + 20 },
+  );
+  await expect(page.locator(".ProseMirror .mpm-image-error")).toHaveText("이미지는 4MB 이하만 올릴 수 있어요.");
+  await expect(page.getByRole("button", { name: "업로드 실패, 다시 시도" })).toHaveCount(0);
+  await expect(page.getByRole("status")).toContainText("4MB 이하");
+  await expect(page.getByTestId("markdown-output")).not.toContainText("blob:");
+  await expect(page.getByRole("button", { name: "제출" })).toBeEnabled();
+  expect(requests).toEqual([]);
+});
+
 test("서식 버튼에는 이름이 있고 편집기에는 접근 가능한 이름이 있다", async ({ page }) => {
   await login(page);
   const editor = await openEditor(page);

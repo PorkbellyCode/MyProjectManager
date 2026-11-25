@@ -9,6 +9,7 @@ import type { Db } from "@/lib/db";
 import { fileUrlForKey, keyFromUrl, makeKey, parseKey } from "@/lib/storage/blob-store";
 import { createFakeBlobStore } from "@/lib/storage/fake-blob";
 import { handleUpload, MAX_UPLOAD_BYTES } from "@/lib/storage/upload";
+import { TOO_LARGE_MESSAGE } from "@/lib/storage/limits";
 
 const { putMock, getMock, delMock } = vi.hoisted(() => ({
   putMock: vi.fn(async () => ({})),
@@ -132,9 +133,15 @@ describe("업로드 API", () => {
     expect((await upload(member, formWith("text/html", new TextEncoder().encode("<b>")))).status).toBe(415);
     expect((await upload(member, formWith("image/svg+xml", new TextEncoder().encode("<svg/>")))).status).toBe(415);
   });
-  test("10MB 초과 413", async () => {
+  test("한도는 4MB(Vercel 함수 요청 본문 4.5MB 제한)", () => {
+    expect(MAX_UPLOAD_BYTES).toBe(4 * 1024 * 1024);
+  });
+  test("4MB 초과 413과 한국어 안내", async () => {
     const big = new Uint8Array(MAX_UPLOAD_BYTES + 1);
-    expect((await upload(member, formWith("image/png", big))).status).toBe(413);
+    const res = await upload(member, formWith("image/png", big));
+    expect(res.status).toBe(413);
+    expect(((await res.json()) as { message: string }).message).toBe(TOO_LARGE_MESSAGE);
+    expect(TOO_LARGE_MESSAGE).toBe("이미지는 4MB 이하만 올릴 수 있어요.");
   });
   test("Content-Length가 한도를 크게 넘으면 본문을 읽지 않고 413", async () => {
     const form = formWith("image/png", PNG);
@@ -144,7 +151,7 @@ describe("업로드 API", () => {
     expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
   });
-  test("정확히 10MB는 허용", async () => {
+  test("정확히 4MB는 허용", async () => {
     const ok = new Uint8Array(MAX_UPLOAD_BYTES);
     expect((await upload(member, formWith("image/png", ok))).status).toBe(201);
   });
