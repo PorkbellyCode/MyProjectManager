@@ -131,6 +131,71 @@ describe("작업 큐", () => {
     expect(rc.attempts).toBe(0);
   });
 
+  test("제한 시간을 넘긴 핸들러는 실패로 기록한다", async () => {
+    const id = await enqueue(db, "repo.analyze", {});
+    const n = await runPending(
+      db,
+      { "repo.analyze": () => new Promise<void>((r) => setTimeout(r, 500)) },
+      5,
+      { timeoutMs: 50 },
+    );
+    expect(n).toBe(1);
+    const row = await getJob(db, id);
+    expect(row.status).toBe("pending");
+    expect(row.attempts).toBe(1);
+    expect(row.lastError).toBe("timeout: 0.05s");
+  });
+
+  test("배치에서 기다린 시간은 stale 판정에 들어가지 않는다(시작 직전 updatedAt 갱신)", async () => {
+    const a = await enqueue(db, "ticket.summarize", { i: 0 });
+    const b = await enqueue(db, "ticket.summarize", { i: 1 });
+    await db.update(jobs).set({ createdAt: new Date(Date.now() - 2000) }).where(eq(jobs.id, a));
+    await db.update(jobs).set({ createdAt: new Date(Date.now() - 1000) }).where(eq(jobs.id, b));
+    let bUpdatedAtDuringA: Date | undefined;
+    let bStartUpdatedAt: Date | undefined;
+    await runPending(db, {
+      "ticket.summarize": async (p) => {
+        if ((p as { i: number }).i === 0) {
+          bUpdatedAtDuringA = (await getJob(db, b)).updatedAt;
+          await new Promise((r) => setTimeout(r, 100));
+        } else {
+          bStartUpdatedAt = (await getJob(db, b)).updatedAt;
+        }
+      },
+    });
+    expect(bStartUpdatedAt!.getTime()).toBeGreaterThan(bUpdatedAtDuringA!.getTime());
+  });
+
+  test("회수된 작업을 늦게 끝낸 핸들러는 결과를 덮어쓰지 않는다", async () => {
+    const id = await enqueue(db, "repo.analyze", {});
+    await runPending(db, {
+      "repo.analyze": async () => {
+        // 실행 중에 stale로 회수된 상황: attempts+1, pending으로 되돌아감
+        await db
+          .update(jobs)
+          .set({ status: "pending", attempts: 1, lastError: "stale: running > 5m" })
+          .where(eq(jobs.id, id));
+      },
+    });
+    const row = await getJob(db, id);
+    expect(row.status).toBe("pending");
+    expect(row.attempts).toBe(1);
+    expect(row.lastError).toBe("stale: running > 5m");
+
+    // 실패로 끝나는 늦은 핸들러도 마찬가지
+    await db.update(jobs).set({ runAfter: new Date(Date.now() - 1000) }).where(eq(jobs.id, id));
+    await runPending(db, {
+      "repo.analyze": async () => {
+        await db.update(jobs).set({ status: "failed", attempts: 3, lastError: "x" }).where(eq(jobs.id, id));
+        throw new Error("late");
+      },
+    });
+    const row2 = await getJob(db, id);
+    expect(row2.status).toBe("failed");
+    expect(row2.attempts).toBe(3);
+    expect(row2.lastError).toBe("x");
+  });
+
   test("핸들러는 claim 커밋 뒤에 실행된다(실행 중 상태가 보인다)", async () => {
     const id = await enqueue(db, "ticket.summarize", {});
     let during: string | undefined;

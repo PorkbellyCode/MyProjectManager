@@ -29,11 +29,28 @@ export async function enqueue(db: Db, kind: JobKind, payload: unknown): Promise<
   return row.id;
 }
 
+export const HANDLER_TIMEOUT_MS = 120_000;
+
+function withTimeout(run: () => Promise<void>, ms: number): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`timeout: ${ms / 1000}s`)), ms);
+  });
+  return Promise.race([run(), timeout]).finally(() => clearTimeout(timer));
+}
+
 /**
  * 실행할 작업을 `FOR UPDATE SKIP LOCKED`로 집어 `running`으로 표시하고 커밋한 뒤,
- * 트랜잭션 밖에서 핸들러를 실행한다. 처리한 작업 수를 돌려준다.
+ * 트랜잭션 밖에서 핸들러를 실행한다(핸들러당 제한 시간 있음). 처리한 작업 수를 돌려준다.
+ * 최종 상태 갱신은 `running` + claim 시점의 attempts일 때만 적용한다(그 사이 회수됐으면 건드리지 않는다).
  */
-export async function runPending(db: Db, handlers: Handlers, limit = 5): Promise<number> {
+export async function runPending(
+  db: Db,
+  handlers: Handlers,
+  limit = 5,
+  opts: { timeoutMs?: number } = {},
+): Promise<number> {
+  const timeoutMs = opts.timeoutMs ?? HANDLER_TIMEOUT_MS;
   await reclaimStale(db);
   const claimed = await db.transaction(async (tx) => {
     const rows = await tx
@@ -44,41 +61,51 @@ export async function runPending(db: Db, handlers: Handlers, limit = 5): Promise
       .limit(limit)
       .for("update", { skipLocked: true });
     for (const row of rows) {
-      await tx.update(jobs).set({ status: "running", updatedAt: new Date() }).where(eq(jobs.id, row.id));
+      await tx.update(jobs).set({ status: "running", updatedAt: sql`now()` }).where(eq(jobs.id, row.id));
     }
     return rows;
   });
+
+  // claim 시점의 상태와 같을 때만 최종 갱신한다. 0행이면 이미 회수·재실행된 작업이므로 아무것도 하지 않는다.
+  const stillMine = (job: (typeof claimed)[number]) =>
+    and(eq(jobs.id, job.id), eq(jobs.status, "running"), eq(jobs.attempts, job.attempts));
 
   for (const job of claimed) {
     const handler = handlers[job.kind];
     if (!handler) {
       await db
         .update(jobs)
-        .set({ status: "failed", lastError: `no handler: ${job.kind}`, updatedAt: new Date() })
-        .where(eq(jobs.id, job.id));
+        .set({ status: "failed", lastError: `no handler: ${job.kind}`, updatedAt: sql`now()` })
+        .where(stillMine(job));
       continue;
     }
+    // 배치 안에서 기다린 시간이 stale 판정에 들어가지 않도록 시작 직전에 updatedAt을 갱신한다.
+    await db.update(jobs).set({ updatedAt: sql`now()` }).where(stillMine(job));
+    let error: string | undefined;
     try {
-      await handler(job.payload, db);
-      await db.update(jobs).set({ status: "done", updatedAt: new Date() }).where(eq(jobs.id, job.id));
+      await withTimeout(() => handler(job.payload, db), timeoutMs);
     } catch (e) {
-      const attempts = job.attempts + 1;
-      const message = e instanceof Error ? e.message : String(e);
-      await db
-        .update(jobs)
-        .set(
-          attempts < MAX_ATTEMPTS
-            ? {
-                status: "pending",
-                attempts,
-                lastError: message,
-                runAfter: new Date(Date.now() + attempts * BACKOFF_MS),
-                updatedAt: new Date(),
-              }
-            : { status: "failed", attempts, lastError: message, updatedAt: new Date() },
-        )
-        .where(eq(jobs.id, job.id));
+      error = e instanceof Error ? e.message : String(e);
     }
+    if (error === undefined) {
+      await db.update(jobs).set({ status: "done", updatedAt: sql`now()` }).where(stillMine(job));
+      continue;
+    }
+    const attempts = job.attempts + 1;
+    await db
+      .update(jobs)
+      .set(
+        attempts < MAX_ATTEMPTS
+          ? {
+              status: "pending",
+              attempts,
+              lastError: error,
+              runAfter: sql`now() + ${attempts * BACKOFF_MS / 1000} * interval '1 second'`,
+              updatedAt: sql`now()`,
+            }
+          : { status: "failed", attempts, lastError: error, updatedAt: sql`now()` },
+      )
+      .where(stillMine(job));
   }
   return claimed.length;
 }
