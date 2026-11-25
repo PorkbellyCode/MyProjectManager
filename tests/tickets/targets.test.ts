@@ -1,8 +1,9 @@
 import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { and, eq } from "drizzle-orm";
 import { createTestDb } from "../helpers/db";
+import { makeProject, signUp } from "../helpers/world";
 import { createAuth } from "@/lib/auth";
-import { groups, member, projects } from "@/lib/db/schema";
+import { groups, member } from "@/lib/db/schema";
 import type { Db } from "@/lib/db";
 import { InvalidTargetError, validateTarget } from "@/lib/tickets/targets";
 
@@ -14,33 +15,21 @@ let orgId: string;
 let lead: { id: string }, dev: { id: string }, req: { id: string }, gone: { id: string }, other: { id: string };
 let g1: { id: string }, g2: { id: string };
 
-async function signUp(email: string, name: string) {
-  return (await auth.api.signUpEmail({ body: { email, password: "password-1234", name } })).user;
-}
-async function makeProject(slug: string, creatorId: string) {
-  const org = await auth.api.createOrganization({ body: { name: slug, slug, userId: creatorId } });
-  const [p] = await db
-    .insert(projects)
-    .values({ organizationId: org!.id, name: slug, repoUrl: "https://github.com/x/y" })
-    .returning();
-  return { project: p, orgId: org!.id };
-}
-
 beforeAll(async () => {
   ({ db, close } = await createTestDb());
   auth = createAuth(db);
-  lead = await signUp("l@example.com", "리드");
-  dev = await signUp("d@example.com", "개발자");
-  req = await signUp("r@example.com", "요청자");
-  gone = await signUp("g@example.com", "빠진사람");
-  other = await signUp("o@example.com", "다른프로젝트");
-  const a = await makeProject("proj-a", lead.id);
+  lead = await signUp(auth, "l@example.com", "리드");
+  dev = await signUp(auth, "d@example.com", "개발자");
+  req = await signUp(auth, "r@example.com", "요청자");
+  gone = await signUp(auth, "g@example.com", "빠진사람");
+  other = await signUp(auth, "o@example.com", "다른프로젝트");
+  const a = await makeProject(db, auth, "proj-a", lead.id);
   p1 = a.project;
   orgId = a.orgId;
   await auth.api.addMember({ body: { organizationId: orgId, userId: dev.id, role: "developer" } });
   await auth.api.addMember({ body: { organizationId: orgId, userId: req.id, role: "requester" } });
   await auth.api.addMember({ body: { organizationId: orgId, userId: gone.id, role: "developer" } });
-  const b = await makeProject("proj-b", other.id);
+  const b = await makeProject(db, auth, "proj-b", other.id);
   p2 = b.project;
   [g1] = await db.insert(groups).values({ projectId: p1.id, name: "백엔드" }).returning();
   [g2] = await db.insert(groups).values({ projectId: p2.id, name: "남의그룹" }).returning();
