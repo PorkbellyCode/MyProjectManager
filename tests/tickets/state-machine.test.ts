@@ -155,6 +155,10 @@ describe("전이 표: 각 행 성공", () => {
     expect(
       applyAction({ ...closed, lastAssigneeId: "d1" }, { type: "reopenClosed" }, lead()),
     ).toMatchObject({ status: "assigned", targetUserId: "d1", assigneeId: null });
+    // lastAssigneeId 없이 assigneeId만 남아 있어도(close는 비우지 않음) 그 사람에게 간다
+    expect(
+      applyAction({ ...closed, assigneeId: "d1" }, { type: "reopenClosed" }, lead()),
+    ).toMatchObject({ status: "assigned", targetUserId: "d1", assigneeId: null });
     expect(applyAction(closed, { type: "reopenClosed" }, lead())).toMatchObject({
       status: "queued",
       targetUserId: null,

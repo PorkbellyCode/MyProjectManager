@@ -44,7 +44,7 @@ export type ActorCtx = {
  * 상태 기계가 보는 티켓의 모양.
  * `lastAssigneeId`는 선택 필드: `reopenClosed`가 "이전 담당자"를 알아야 하는데
  * 이 함수는 DB를 조회하지 않으므로, 호출자(서비스)가 종결 직전 담당자
- * (ticket_events에서 구한 값)를 넣어 준다. 없으면 리드 큐로 돌아간다.
+ * (ticket_events에서 구한 값)를 넣어 준다. 없으면 assigneeId(close가 비우지 않음)를 쓰고, 그것도 없으면 리드 큐로 돌아간다.
  */
 export type TicketShape = {
   status: TicketStatus;
@@ -159,6 +159,9 @@ const needReason = (s: string | undefined | null, msg = "사유를 적어 주세
 
 const PRE_SUBMIT: readonly TicketStatus[] = ["draft", "ai_reviewing", "awaiting_requester"];
 const OPEN_STATES: readonly TicketStatus[] = ["queued", "assigned", "in_progress", "on_hold", "resolved"];
+
+/** 이전 담당자: lastAssigneeId가 있으면 그것, 없으면 close가 비우지 않은 assigneeId. */
+const prev = (t: TicketShape) => t.lastAssigneeId ?? t.assigneeId;
 
 type Table = { [K in ActionType]: Rule<K>[] };
 
@@ -278,7 +281,7 @@ export const TRANSITIONS: Table = {
       from: ["closed"],
       who: (_t, a) => isLead(a),
       apply: (t) => ({
-        ...placeByTarget(t.lastAssigneeId ? { kind: "user", userId: t.lastAssigneeId } : null),
+        ...placeByTarget(prev(t) ? { kind: "user", userId: prev(t)! } : null),
         assigneeId: null,
         closeReason: null,
         closeNote: null,
