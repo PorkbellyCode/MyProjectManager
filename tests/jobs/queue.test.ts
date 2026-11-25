@@ -88,7 +88,12 @@ describe("작업 큐", () => {
 
   test("limit만큼만, 오래된 순으로 처리한다", async () => {
     const ids: string[] = [];
-    for (let i = 0; i < 3; i++) ids.push(await enqueue(db, "ticket.summarize", { i }));
+    for (let i = 0; i < 3; i++) {
+      const id = await enqueue(db, "ticket.summarize", { i });
+      // createdAt이 같은 값으로 겹치면 순서가 불안정하므로 명시적으로 벌려 둔다.
+      await db.update(jobs).set({ createdAt: new Date(Date.now() - (3 - i) * 1000) }).where(eq(jobs.id, id));
+      ids.push(id);
+    }
     const order: number[] = [];
     const n = await runPending(
       db,
@@ -98,6 +103,32 @@ describe("작업 큐", () => {
     expect(n).toBe(2);
     expect(order).toEqual([0, 1]);
     expect((await getJob(db, ids[2])).status).toBe("pending");
+  });
+
+  test("5분 넘게 running인 작업은 실패 1회로 회수한다(R12)", async () => {
+    const old = (min: number) => new Date(Date.now() - min * 60_000);
+    const a = await enqueue(db, "repo.analyze", {});
+    const b = await enqueue(db, "repo.analyze", {});
+    const c = await enqueue(db, "repo.analyze", {});
+    await db.update(jobs).set({ status: "running", updatedAt: old(6) }).where(eq(jobs.id, a));
+    await db.update(jobs).set({ status: "running", attempts: 2, updatedAt: old(6) }).where(eq(jobs.id, b));
+    await db.update(jobs).set({ status: "running", updatedAt: old(1) }).where(eq(jobs.id, c));
+    const before = Date.now();
+    expect(await runPending(db, {})).toBe(0);
+    const ra = await getJob(db, a);
+    expect(ra.status).toBe("pending");
+    expect(ra.attempts).toBe(1);
+    expect(ra.lastError).toBe("stale: running > 5m");
+    const delay = ra.runAfter.getTime() - before;
+    expect(delay).toBeGreaterThanOrEqual(29_000);
+    expect(delay).toBeLessThan(40_000);
+    const rb = await getJob(db, b);
+    expect(rb.status).toBe("failed");
+    expect(rb.attempts).toBe(3);
+    expect(rb.lastError).toBe("stale: running > 5m");
+    const rc = await getJob(db, c);
+    expect(rc.status).toBe("running");
+    expect(rc.attempts).toBe(0);
   });
 
   test("핸들러는 claim 커밋 뒤에 실행된다(실행 중 상태가 보인다)", async () => {
