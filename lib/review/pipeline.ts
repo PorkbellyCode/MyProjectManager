@@ -37,6 +37,8 @@ export class NoOpenCardError extends Error {
 export type ReviewDeps = {
   runRoleAgent?: typeof defaultRunRoleAgent;
   timeoutMs?: number;
+  /** 테스트용 주입. */
+  loadEvidenceCtx?: typeof loadEvidenceCtx;
 };
 
 /** 늦게 끝난 작업: 그 사이 티켓이 바뀌었다. */
@@ -55,11 +57,18 @@ const stageEvent = (tx: Tx, ticketId: string, from: ReviewStage | null, to: Revi
   });
 
 /** 버전을 올리지 않고 검토 단계만 옮긴다. version이 달라졌으면 StaleError. */
-async function moveStage(tx: Tx, t: { id: string; reviewStage: ReviewStage | null }, version: number, to: ReviewStage) {
+export async function moveStage(tx: Tx, t: { id: string; reviewStage: ReviewStage | null }, version: number, to: ReviewStage) {
   const rows = await tx
     .update(tickets)
     .set({ reviewStage: to, updatedAt: new Date() })
-    .where(and(eq(tickets.id, t.id), eq(tickets.version, version), eq(tickets.status, "ai_reviewing")))
+    .where(
+      and(
+        eq(tickets.id, t.id),
+        eq(tickets.version, version),
+        eq(tickets.status, "ai_reviewing"),
+        t.reviewStage === null ? isNull(tickets.reviewStage) : eq(tickets.reviewStage, t.reviewStage),
+      ),
+    )
     .returning({ id: tickets.id });
   if (rows.length === 0) throw new StaleError();
   await stageEvent(tx, t.id, t.reviewStage, to);
@@ -100,7 +109,8 @@ type JudgmentBase = {
   projectId: string;
   ticketId: string;
   stage: ReviewStage;
-  profile: AgentProfile;
+  /** 프로필이 없으면(조회 실패) null. 이때는 판단 행을 남기지 않는다. */
+  profile: AgentProfile | null;
   input: unknown;
 };
 
@@ -116,6 +126,7 @@ async function insertJudgment(
     error?: string;
   },
 ) {
+  if (!base.profile) return null;
   const [j] = await tx
     .insert(aiJudgments)
     .values({
@@ -140,7 +151,7 @@ async function insertJudgment(
   return j;
 }
 
-const insertTurn = (tx: Tx, ticketId: string, stage: ReviewStage, kind: ReviewTurnKind, payload: unknown, judgmentId: string) =>
+const insertTurn = (tx: Tx, ticketId: string, stage: ReviewStage, kind: ReviewTurnKind, payload: unknown, judgmentId: string | null) =>
   tx.insert(ticketReviewTurns).values({ ticketId, stage, round: null, kind, payload, judgmentId });
 
 type StageOutcome = "proceed" | "stop";
@@ -156,11 +167,13 @@ export async function runReviewStage(
 ): Promise<void> {
   const [t0] = await db.select().from(tickets).where(eq(tickets.id, job.ticketId));
   if (!t0) return;
-  if (job.stage !== "dedup" && job.stage !== "resolve") {
-    // interview 이후 단계는 Task 10이 채운다.
-    throw new Error(`no runner for review stage: ${job.stage}`);
+  let profile: AgentProfile | null = null;
+  let profileError: unknown = null;
+  try {
+    profile = await getActiveProfile(db, t0.projectId, "resolver");
+  } catch (e) {
+    profileError = e;
   }
-  const profile = await getActiveProfile(db, t0.projectId, "resolver");
   const base = (stage: ReviewStage): JudgmentBase => ({
     projectId: t0.projectId,
     ticketId: t0.id,
@@ -169,16 +182,30 @@ export async function runReviewStage(
     input: { title: t0.title, body: t0.body, category: t0.category, urgency: t0.urgency },
   });
 
-  if (t0.status !== "ai_reviewing" || t0.version !== job.version) {
+  // 이미 다른 단계로 넘어갔거나(재시도·회수된 작업), 제출 등으로 바뀐 티켓은 건드리지 않는다.
+  if (t0.status !== "ai_reviewing" || t0.version !== job.version || t0.reviewStage !== job.stage) {
     await insertJudgment(db, base(job.stage), { status: "discarded", error: "검토 시작 전에 티켓이 바뀌었어요." });
     return;
   }
 
-  if (job.stage === "dedup") {
-    const outcome = await runDedupStage(db, t0, job.version, profile, base("dedup"), deps);
-    if (outcome === "stop") return;
+  // 여기부터는 어떤 오류든 티켓을 ai_reviewing에 가두지 않는다: 실패 카드 + stageFailed.
+  const failJob = { ticketId: t0.id, version: job.version };
+  let current: ReviewStage = job.stage;
+  try {
+    if (!profile) throw profileError ?? new Error("에이전트 프로필이 없어요: resolver");
+    if (job.stage !== "dedup" && job.stage !== "resolve") {
+      // interview 이후 단계는 Task 10이 채운다.
+      throw new Error(`no runner for review stage: ${job.stage}`);
+    }
+    if (job.stage === "dedup") {
+      const outcome = await runDedupStage(db, t0, job.version, profile, base("dedup"), deps);
+      if (outcome === "stop") return;
+      current = "resolve";
+    }
+    await runResolveStage(db, t0, job.version, profile, base("resolve"), deps);
+  } catch (err) {
+    await recordFailure(db, failJob, base(current), err);
   }
-  await runResolveStage(db, t0, job.version, profile, base("resolve"), deps);
 }
 
 type Run = Awaited<ReturnType<typeof defaultRunRoleAgent>>;
@@ -211,7 +238,7 @@ async function recordFailure(db: Db, job: { ticketId: string; version: number },
   try {
     await db.transaction(async (tx) => {
       const j = await insertJudgment(tx, b, { status: "failed", error: message });
-      await insertTurn(tx, job.ticketId, b.stage, "failed", { message: FAILED_MESSAGE }, j.id);
+      await insertTurn(tx, job.ticketId, b.stage, "failed", { message: FAILED_MESSAGE }, j?.id ?? null);
       await performAction(tx, { ticketId: job.ticketId, expectedVersion: job.version, action: { type: "stageFailed" }, actor: SYSTEM });
     });
   } catch (e) {
@@ -221,14 +248,8 @@ async function recordFailure(db: Db, job: { ticketId: string; version: number },
 }
 
 async function runDedupStage(db: Db, t: Ticket, version: number, profile: AgentProfile, b: JudgmentBase, deps: ReviewDeps): Promise<StageOutcome> {
-  let res: Awaited<ReturnType<typeof invoke<z.infer<typeof dedupSchema>>>>;
-  try {
-    res = await invoke(db, t, profile, dedupSystem(profile.instructions), dedupSchema, deps);
-  } catch (err) {
-    await recordFailure(db, { ticketId: t.id, version }, b, err);
-    return "stop";
-  }
-  const ctx = await loadEvidenceCtx(db, t.projectId);
+  const res = await invoke(db, t, profile, dedupSystem(profile.instructions), dedupSchema, deps);
+  const ctx = await (deps.loadEvidenceCtx ?? loadEvidenceCtx)(db, t.projectId);
   const normalized = normalizeDedup(res.parsed, ctx, t.id);
   const differences = new Map(res.parsed.candidates.map((c) => [c.ticketId, c.differences]));
   const ids = normalized.candidates.map((c) => c.ticketId);
@@ -251,7 +272,7 @@ async function runDedupStage(db: Db, t: Ticket, version: number, profile: AgentP
     return await db.transaction(async (tx) => {
       const j = await insertJudgment(tx, b, { status: "ok", ...done });
       if (payload.candidates.length > 0) {
-        await insertTurn(tx, t.id, "dedup", "duplicate_candidates", payload, j.id);
+        await insertTurn(tx, t.id, "dedup", "duplicate_candidates", payload, j!.id);
         await performAction(tx, { ticketId: t.id, expectedVersion: version, action: { type: "stageReady" }, actor: SYSTEM });
         return "stop" as const;
       }
@@ -266,14 +287,8 @@ async function runDedupStage(db: Db, t: Ticket, version: number, profile: AgentP
 }
 
 async function runResolveStage(db: Db, t: Ticket, version: number, profile: AgentProfile, b: JudgmentBase, deps: ReviewDeps): Promise<StageOutcome> {
-  let res: Awaited<ReturnType<typeof invoke<z.infer<typeof resolveSchema>>>>;
-  try {
-    res = await invoke(db, t, profile, resolveSystem(profile.instructions), resolveSchema, deps);
-  } catch (err) {
-    await recordFailure(db, { ticketId: t.id, version }, b, err);
-    return "stop";
-  }
-  const ctx = await loadEvidenceCtx(db, t.projectId);
+  const res = await invoke(db, t, profile, resolveSystem(profile.instructions), resolveSchema, deps);
+  const ctx = await (deps.loadEvidenceCtx ?? loadEvidenceCtx)(db, t.projectId);
   const normalized = normalizeResolve(res.parsed, ctx, t.id);
   const done = { output: res.output, normalized, evidence: normalized?.evidence ?? [], run: res };
 
@@ -281,7 +296,7 @@ async function runResolveStage(db: Db, t: Ticket, version: number, profile: Agen
     await db.transaction(async (tx) => {
       const j = await insertJudgment(tx, b, { status: "ok", ...done });
       if (normalized) {
-        await insertTurn(tx, t.id, "resolve", "resolution", normalized, j.id);
+        await insertTurn(tx, t.id, "resolve", "resolution", normalized, j!.id);
         await performAction(tx, { ticketId: t.id, expectedVersion: version, action: { type: "stageReady" }, actor: SYSTEM });
         return;
       }

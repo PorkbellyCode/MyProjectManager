@@ -25,6 +25,7 @@ import {
   answerResolution,
   FAILED_MESSAGE,
   requestReview,
+  moveStage,
   runReviewStage,
   type ReviewDeps,
 } from "@/lib/review/pipeline";
@@ -201,6 +202,7 @@ describe("검토 파이프라인 ①② (PGlite)", () => {
   async function resolutionCard() {
     const [doc] = await db.insert(domainDocs).values({ projectId: w.project.id, title: "정책", body: "로그인은 5회 실패 시 잠겨요" }).returning();
     const t = await reviewing();
+    await db.update(tickets).set({ reviewStage: "resolve" }).where(eq(tickets.id, t.id));
     await runReviewStage(
       db,
       { ticketId: t.id, stage: "resolve", version: t.version },
@@ -385,6 +387,77 @@ describe("검토 파이프라인 ①② (PGlite)", () => {
     expect(after.reviewStage).toBe("dedup");
     expect((await judgments(t.id)).map((j) => j.status)).toEqual(["discarded"]);
     expect(await pendingJobs()).toHaveLength(0);
+  });
+
+  test("resolver 프로필이 없어도 실패 카드로 끝난다(갇히지 않음)", async () => {
+    const bare = await makeProject(db, w.auth, "pipe-bare", w.lead.id, { isDemo: true });
+    const d = await createDraft(db, { projectId: bare.project.id, authorId: w.lead.id, title: "t", body: "b", category: "defect", urgency: "normal" });
+    const t = await requestReview(db, { ticketId: d.id, expectedVersion: d.version, actor: await getActorCtx(db, bare.project.id, w.lead.id) });
+    await runReviewStage(db, { ticketId: t.id, stage: "dedup", version: t.version }, deps(NONE_DEDUP));
+    expect((await get(t.id)).status).toBe("awaiting_requester");
+    const turn = await lastTurn(t.id);
+    expect(turn.kind).toBe("failed");
+    expect(turn.payload).toEqual({ message: FAILED_MESSAGE });
+    expect(turn.judgmentId).toBeNull();
+  });
+
+  test("증거 컨텍스트 로드 오류도 실패 카드", async () => {
+    const t = await reviewing();
+    await runReviewStage(db, { ticketId: t.id, stage: "dedup", version: t.version }, {
+      ...deps(NONE_DEDUP),
+      loadEvidenceCtx: async () => {
+        throw new Error("db down");
+      },
+    });
+    expect((await get(t.id)).status).toBe("awaiting_requester");
+    expect((await lastTurn(t.id)).kind).toBe("failed");
+    expect((await judgments(t.id)).map((j) => j.status)).toEqual(["failed"]);
+  });
+
+  test("해소 단계의 내부 오류도 실패 카드", async () => {
+    const t = await reviewing();
+    let n = 0;
+    await runReviewStage(db, { ticketId: t.id, stage: "dedup", version: t.version }, {
+      ...deps(NONE_DEDUP, NONE_RESOLVE),
+      loadEvidenceCtx: async (d, p) => {
+        if (++n === 2) throw new Error("boom");
+        return (await import("@/lib/review/normalize")).loadEvidenceCtx(d, p);
+      },
+    });
+    expect((await get(t.id)).status).toBe("awaiting_requester");
+    expect((await lastTurn(t.id)).kind).toBe("failed");
+  });
+
+  test("러너가 없는 interview 단계는 실패 카드", async () => {
+    const t = await reviewing();
+    await db.update(tickets).set({ reviewStage: "interview" }).where(eq(tickets.id, t.id));
+    await runReviewStage(db, { ticketId: t.id, stage: "interview", version: t.version }, deps());
+    expect((await get(t.id)).status).toBe("awaiting_requester");
+    expect((await lastTurn(t.id)).kind).toBe("failed");
+  });
+
+  test("이미 resolve로 넘어간 티켓에 dedup 작업이 다시 오면 discarded, 카드·작업 없음", async () => {
+    const t = await reviewing();
+    await runReviewStage(db, { ticketId: t.id, stage: "dedup", version: t.version }, deps(NONE_DEDUP, NONE_RESOLVE));
+    await db.delete(jobs);
+    const before = (await judgments(t.id)).length;
+    let called = false;
+    await runReviewStage(db, { ticketId: t.id, stage: "dedup", version: t.version }, { runRoleAgent: (async () => { called = true; }) as unknown as Run });
+    expect(called).toBe(false);
+    const js = await judgments(t.id);
+    expect(js).toHaveLength(before + 1);
+    expect(js.at(-1)!.status).toBe("discarded");
+    expect(await turns(t.id)).toHaveLength(0);
+    expect(await pendingJobs()).toHaveLength(0);
+    expect((await get(t.id)).reviewStage).toBe("interview");
+  });
+
+  test("moveStage: from이 다르면 아무것도 바꾸지 않는다", async () => {
+    const t = await reviewing();
+    await expect(db.transaction((tx) => moveStage(tx, { id: t.id, reviewStage: "resolve" }, t.version, "interview"))).rejects.toThrow();
+    expect((await get(t.id)).reviewStage).toBe("dedup");
+    await db.transaction((tx) => moveStage(tx, { id: t.id, reviewStage: "dedup" }, t.version, "resolve"));
+    expect((await get(t.id)).reviewStage).toBe("resolve");
   });
 
   test("시작 시 version이 다르면 아무것도 바꾸지 않고 discarded만 남긴다", async () => {
