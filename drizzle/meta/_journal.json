@@ -8,6 +8,13 @@
       "when": 1795564357530,
       "tag": "0000_unique_night_nurse",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1795564686916,
+      "tag": "0001_chubby_living_tribunal",
+      "breakpoints": true
     }
   ]
 }
