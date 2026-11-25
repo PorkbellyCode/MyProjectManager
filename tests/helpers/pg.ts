@@ -29,6 +29,8 @@ export async function createPgTestDb(): Promise<{ db: Db; close(): Promise<void>
   const url = new URL(TEST_PG_URL);
   url.pathname = `/${name}`;
   const pool = new Pool({ connectionString: url.toString(), max: 8 });
+  // 종료 시 drop database ... with (force)가 유휴 연결을 끊으면 풀이 error를 낸다. 처리하지 않으면 테스트 런이 오류로 표시된다.
+  pool.on("error", () => {});
   const db = drizzle(pool, { schema });
   await migrate(db, { migrationsFolder: path.resolve(__dirname, "../../drizzle") });
   return {
