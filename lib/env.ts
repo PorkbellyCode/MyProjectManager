@@ -10,7 +10,9 @@ export const env = createEnv({
     ANTHROPIC_API_KEY: z.string().min(1).optional(),
     OPENAI_API_KEY: z.string().min(1).optional(),
     GOOGLE_GENERATIVE_AI_API_KEY: z.string().min(1).optional(),
-    BLOB_READ_WRITE_TOKEN: z.string().min(1),
+    // OIDC 연결(Vercel)은 BLOB_STORE_ID를, 그 외(로컬 등)는 읽기/쓰기 토큰을 쓴다.
+    BLOB_STORE_ID: z.string().min(1).optional(),
+    BLOB_READ_WRITE_TOKEN: z.string().min(1).optional(),
     APP_ENCRYPTION_KEY: z.string().min(1),
     CRON_SECRET: z.string().min(1),
     LANGFUSE_PUBLIC_KEY: z.string().min(1).optional(),
