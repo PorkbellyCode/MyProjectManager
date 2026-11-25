@@ -7,6 +7,9 @@ import { jobs } from "@/lib/db/schema";
 import { enqueue, runPending, type Handler } from "@/lib/jobs/queue";
 import { GET } from "@/app/api/cron/jobs/route";
 
+// connection()은 요청 스코프 밖에서 호출하면 던지므로 테스트에서는 no-op으로 대체한다.
+vi.mock("next/server", () => ({ connection: async () => {} }));
+
 const holder = vi.hoisted(() => ({ db: undefined as unknown }));
 vi.mock("@/lib/db", () => ({ db: new Proxy({}, { get: (_t, p) => Reflect.get(holder.db as object, p) }) }));
 
