@@ -74,12 +74,14 @@ test("② 강조색을 옥색으로 바꾸면 주요 버튼이 바뀌고, 프로
   await page.getByRole("button", { name: /ChatGPT 옥색/ }).click();
   await expect.poll(() => bg(page)).toBe(CHATGPT_LIGHT);
   await expect(page.getByText("강조색을 바꿨어요")).toBeVisible();
+  // 포털(팝오버)에도 강조색이 닿는다: 선택된 프리셋의 테두리
+  await expect(page.getByRole("button", { name: "ChatGPT 옥색" })).toHaveCSS("border-top-color", CHATGPT_LIGHT);
 
   // ③ 새로고침 후 유지 + 서버가 응답 HTML에 이미 강조색을 넣어 보낸다(첫 페인트부터 적용 = 깜빡임 없음)
   await page.reload();
   expect(await bg(page)).toBe(CHATGPT_LIGHT);
   const html = await (await page.context().request.get(page.url())).text();
-  expect(html).toContain("--accent-l:#0F766E");
+  expect(html).toContain("html:root{--accent-l:#0F766E");
   expect(html).toContain("--accent-d:#2DD4BF");
 
   await openProfile(page);
@@ -106,6 +108,21 @@ test("④ 프로젝트 기본 제공자가 google이면 기본 강조색은 #1D4
   await login(page);
   await page.goto(`/p/${seed.geminiProject.id}/tickets`);
   expect(await bg(page)).toBe(GEMINI_LIGHT);
+  // 포털(Ctrl+K 다이얼로그)에서도 강조색은 파랑: 입력창의 캐럿/포커스가 아니라 선택된 항목의 포커스 링 대신,
+  // 다이얼로그 안에서 --brand를 직접 읽는다.
+  await page.locator("html[data-shell-ready]").waitFor({ state: "attached" });
+  await page.keyboard.press("Control+K");
+  const input = page.getByPlaceholder("이동할 곳을 검색하세요");
+  await expect(input).toBeVisible();
+  const brand = await input.evaluate((el) => {
+    const probe = document.createElement("span");
+    probe.style.color = "var(--brand)";
+    el.closest("[role=dialog]")!.appendChild(probe);
+    const c = getComputedStyle(probe).color;
+    probe.remove();
+    return c;
+  });
+  expect(brand).toBe(GEMINI_LIGHT);
 });
 
 test("다크 테마는 저장되고 새로고침해도 유지되며 강조색이 다크 값으로 바뀐다", async ({ page }) => {

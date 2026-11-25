@@ -41,9 +41,14 @@ export function applyTheme(pref: ThemePreference): void {
   window.setTimeout(() => root.classList.remove("theme-transition"), 400);
 }
 
-/** 강조색을 즉시 화면에 반영한다. 셸 래퍼의 변수를 직접 바꾼다. */
+const ACCENT_KEYS = ["--accent-l", "--accent-d", "--on-accent-l", "--on-accent-d"];
+
+/** 강조색을 즉시 화면에 반영한다. 포털까지 닿도록 html에 직접 건다. */
 export function applyAccentVars(vars: Record<string, string>): void {
-  const shell = document.querySelector<HTMLElement>("[data-shell]");
-  if (!shell) return;
-  for (const [k, v] of Object.entries(vars)) shell.style.setProperty(k, v);
+  for (const [k, v] of Object.entries(vars)) document.documentElement.style.setProperty(k, v);
+}
+
+/** 즉시 반영한 값을 걷어내 서버가 보낸 값(<style id="mpm-accent">)이 다시 적용되게 한다. */
+export function clearAccentVars(): void {
+  for (const k of ACCENT_KEYS) document.documentElement.style.removeProperty(k);
 }

@@ -40,26 +40,30 @@ export async function AppShell({ projectId, children }: { projectId?: string; ch
   const base = accentPair(projectAccent);
   const ai = providerAiTokens(provider);
 
-  const vars = {
-    "--accent-l": a.light,
-    "--accent-d": a.dark,
-    "--on-accent-l": onAccent(a.light),
-    "--on-accent-d": onAccent(a.dark),
-    "--ai-tint-l": ai.light.tint,
-    "--ai-tint-d": ai.dark.tint,
-    "--ai-ring-l": ai.light.ring,
-    "--ai-ring-d": ai.dark.ring,
-    "--ai-text-l": ai.light.text,
-    "--ai-text-d": ai.dark.text,
-  } as React.CSSProperties;
+  // 포털(팝오버, 다이얼로그, 토스트)은 래퍼 밖에 그려지므로 변수는 html에 둔다.
+  // 본문 안의 <style>이라 서버 HTML에 그대로 실려 첫 페인트부터 적용된다.
+  const rootVars = [
+    ["--accent-l", a.light],
+    ["--accent-d", a.dark],
+    ["--on-accent-l", onAccent(a.light)],
+    ["--on-accent-d", onAccent(a.dark)],
+    ["--ai-tint-l", ai.light.tint],
+    ["--ai-tint-d", ai.dark.tint],
+    ["--ai-ring-l", ai.light.ring],
+    ["--ai-ring-d", ai.dark.ring],
+    ["--ai-text-l", ai.light.text],
+    ["--ai-text-d", ai.dark.text],
+  ]
+    .map(([k, v]) => `${k}:${v}`)
+    .join(";");
 
   return (
     <div
       data-shell
       data-theme={prefs.theme === "system" ? undefined : prefs.theme}
       className="accent-scope flex min-h-screen flex-col bg-bg text-text"
-      style={vars}
     >
+      <style id="mpm-accent" dangerouslySetInnerHTML={{ __html: `html:root{${rootVars}}` }} />
       <a
         href="#main"
         className="sr-only rounded-lg bg-surface px-3 py-2 text-sm focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"

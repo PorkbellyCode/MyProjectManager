@@ -11,7 +11,7 @@ import { authClient } from "@/lib/auth-client";
 import { cn } from "@/lib/utils";
 import type { ThemePreference } from "@/lib/db/schema";
 import { ACCENT_PRESETS, accentPair, normalizeHex, onAccent } from "@/lib/theme/accent";
-import { applyAccentVars, applyTheme } from "@/lib/theme/client";
+import { applyAccentVars, applyTheme, clearAccentVars } from "@/lib/theme/client";
 import { savePreferencesAction } from "./actions";
 
 export type ProjectAccent = {
@@ -47,6 +47,7 @@ export function useSavePreferences() {
       const res = await savePreferencesAction(patch);
       if (!res.ok) {
         toast.error(res.error);
+        clearAccentVars();
         router.refresh();
         return;
       }

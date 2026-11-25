@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import type { MemberRole } from "@/lib/auth-roles";
 import type { ThemePreference } from "@/lib/db/schema";
-import { applyTheme, resolveTheme, useResolvedTheme } from "@/lib/theme/client";
+import { applyTheme, clearAccentVars, resolveTheme, useResolvedTheme } from "@/lib/theme/client";
 import { CommandPalette, openPalette } from "./command-palette";
 import { Nav } from "./nav";
 import { NotificationBadge } from "./notification-badge";
@@ -60,6 +60,12 @@ export function TopBar({ user, projects, current, unread, theme, accentOverride,
     mq.addEventListener("change", onChange);
     return () => mq.removeEventListener("change", onChange);
   }, [theme]);
+
+  // 서버가 새 강조색을 내려보내면(저장 후, 프로젝트 전환) 즉시 반영용 값을 걷어낸다.
+  const accentKey = `${accentOverride ?? ""}|${projectAccent.light}`;
+  useEffect(() => {
+    clearAccentVars();
+  }, [accentKey]);
 
   // 알림처럼 프로젝트 밖 화면이 어느 프로젝트의 메뉴·강조색을 쓸지 기억해 둔다.
   useEffect(() => {
