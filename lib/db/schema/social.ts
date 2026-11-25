@@ -52,3 +52,15 @@ export const comments = pgTable(
   },
   (t) => [index("comments_ticket_idx").on(t.ticketId, t.createdAt)],
 );
+
+export type ThemePreference = "light" | "dark" | "system";
+
+/** 사용자 화면 설정. accentOverride가 null이면 프로젝트 기본 강조색을 따른다. */
+export const userPreferences = pgTable("user_preferences", {
+  userId: text("user_id")
+    .primaryKey()
+    .references(() => user.id, { onDelete: "cascade" }),
+  theme: text("theme").$type<ThemePreference>().notNull().default("system"),
+  accentOverride: text("accent_override"),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
