@@ -4,6 +4,7 @@ import { createTestDb } from "../helpers/db";
 import { createPgTestDb, pgAvailable } from "../helpers/pg";
 import { addMember, makeProject, signUp } from "../helpers/world";
 import { createAuth } from "@/lib/auth";
+import { ForbiddenError } from "@/lib/access";
 import type { Db } from "@/lib/db";
 import {
   groupMembers,
@@ -299,12 +300,26 @@ describe("ticket service (PGlite)", () => {
       const ev = (await events(t.id)).find((e) => e.type === "urgency_changed")!;
       expect(ev).toMatchObject({ actorId: w.lead.id, actorKind: "user", from: { urgency: "normal" }, to: { urgency: "urgent" } });
     });
-    test("요청자가 제출 후에 바꾸거나 멤버가 아니면 거부, 같은 값이면 변화 없음", async () => {
+    test("작성자는 제출 후에도 바꿀 수 있다(R11)", async () => {
       const t = await submitted(w.req, { kind: "group", groupId: w.g1.id });
-      await expect(setUrgency(db, { ticketId: t.id, to: "low", actorId: w.req.id })).rejects.toThrow();
-      await expect(setUrgency(db, { ticketId: t.id, to: "low", actorId: w.outsider.id })).rejects.toThrow();
+      const u = await setUrgency(db, { ticketId: t.id, to: "low", actorId: w.req.id });
+      expect(u).toMatchObject({ urgency: "low", version: t.version + 1 });
+    });
+    test("개발자(작성자 아님)·작성자 아닌 요청자·비멤버는 거부, 같은 값이면 변화 없음", async () => {
+      const t = await submitted(w.req, { kind: "group", groupId: w.g1.id });
+      await expect(setUrgency(db, { ticketId: t.id, to: "high", actorId: w.dev1.id })).rejects.toBeInstanceOf(ForbiddenError);
+      const auth = createAuth(db);
+      const req2 = await signUp(auth, "req2@example.com", "요청자2");
+      await addMember(auth, w.orgId, req2.id, "requester");
+      await expect(setUrgency(db, { ticketId: t.id, to: "high", actorId: req2.id })).rejects.toBeInstanceOf(ForbiddenError);
+      await expect(setUrgency(db, { ticketId: t.id, to: "high", actorId: w.outsider.id })).rejects.toBeInstanceOf(ForbiddenError);
       const same = await setUrgency(db, { ticketId: t.id, to: "normal", actorId: w.lead.id });
       expect(same.version).toBe(t.version);
+    });
+    test("종결된 티켓은 작성자도 바꿀 수 없다", async () => {
+      const t = await submitted(w.req, null);
+      const c = await act(t, { type: "close", reason: "other", note: "정리" }, w.lead);
+      await expect(setUrgency(db, { ticketId: c.id, to: "high", actorId: w.req.id })).rejects.toBeInstanceOf(ForbiddenError);
     });
     test("작성자는 제출 전(draft)에는 바꿀 수 있다", async () => {
       const d = await createDraft(db, draftInput(w.project.id, w.req.id));

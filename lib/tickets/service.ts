@@ -195,7 +195,7 @@ async function carrySubscribersToOrigin(tx: Db, ticketId: string, originId: stri
 }
 
 /**
- * 긴급도 변경. 사람만 호출한다(AI 경로 없음). 허용: lead/developer, 또는 제출 전(draft·ai_reviewing·awaiting_requester)의 작성자.
+ * 긴급도 변경. 사람만 호출한다(AI 경로 없음). 허용(R11): 티켓 작성자(종결·철회 전 어느 상태든)와 프로젝트 lead.
  * 종결·철회된 티켓은 바꿀 수 없다. 값이 같으면 아무것도 쓰지 않는다. 바뀌면 version이 올라 다른 동작과 충돌 처리된다.
  */
 export async function setUrgency(db: Db, input: { ticketId: string; to: Urgency; actorId: string }): Promise<Ticket> {
@@ -204,9 +204,8 @@ export async function setUrgency(db: Db, input: { ticketId: string; to: Urgency;
     if (!cur) throw new TicketNotFoundError();
     const m = await getMembership(tx, cur.projectId, input.actorId);
     if (!m) throw new ForbiddenError("이 프로젝트의 멤버가 아니에요.");
-    const staff = m.role === "lead" || m.role === "developer";
-    const preSubmit = ["draft", "ai_reviewing", "awaiting_requester"].includes(cur.status);
-    if (!staff && !(cur.authorId === input.actorId && preSubmit)) throw new ForbiddenError();
+    // R11: 티켓 작성자(종결 전이면 언제든)와 프로젝트 lead만. 담당 개발자도 작성자가 아니면 바꿀 수 없다.
+    if (!(m.role === "lead" || cur.authorId === input.actorId)) throw new ForbiddenError();
     if (cur.status === "closed" || cur.status === "withdrawn_ai_resolved") {
       throw new ForbiddenError("끝난 티켓의 긴급도는 바꿀 수 없어요.");
     }
