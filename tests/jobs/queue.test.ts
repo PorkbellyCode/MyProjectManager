@@ -246,7 +246,7 @@ describe("/api/cron/jobs", () => {
   test("올바른 시크릿이면 runPending을 돌리고 { processed }를 돌려준다", async () => {
     const t = await createTestDb();
     holder.db = t.db;
-    await enqueue(t.db, "repo.analyze", {}); // 핸들러 레지스트리가 비어 있으므로 failed로 처리된다
+    await enqueue(t.db, "ticket.silentReview", {}); // 아직 등록된 핸들러가 없는 종류는 failed로 처리된다
     const res = await GET(
       new Request("http://localhost/api/cron/jobs", {
         headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
@@ -256,7 +256,7 @@ describe("/api/cron/jobs", () => {
     expect(await res.json()).toEqual({ processed: 1 });
     const [row] = await t.db.select().from(jobs);
     expect(row.status).toBe("failed");
-    expect(row.lastError).toBe("no handler: repo.analyze");
+    expect(row.lastError).toBe("no handler: ticket.silentReview");
     await t.close();
   });
 });

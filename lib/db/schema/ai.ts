@@ -11,6 +11,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { user } from "./auth";
 import { projects } from "./projects";
+import type { RepoFacts } from "@/lib/repo/source";
+import type { RepoOverview } from "@/lib/agents/repo-analyst";
 import { type ReviewStage, tickets } from "./tickets";
 
 export type AgentRole = "resolver" | "lead" | "recommender" | "summarizer" | "repo";
@@ -71,4 +73,25 @@ export const aiJudgments = pgTable(
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (t) => [index("ai_judgments_ticket_idx").on(t.ticketId, t.createdAt)],
+);
+
+export type RepoSnapshotStatus = "ok" | "failed";
+
+/** 레포 분석 결과 스냅샷. 분석할 때마다 새 행이 생기고 최신이 현재 개요다. */
+export const repoSnapshots = pgTable(
+  "repo_snapshots",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    /** `RepoFacts`. 출처 오류로 가져오지 못했으면 null */
+    facts: jsonb("facts").$type<RepoFacts | null>(),
+    /** `RepoOverview`. 실패하면 null */
+    overview: jsonb("overview").$type<RepoOverview | null>(),
+    status: text("status").$type<RepoSnapshotStatus>().notNull(),
+    error: text("error"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (t) => [index("repo_snapshots_project_idx").on(t.projectId, t.createdAt)],
 );
