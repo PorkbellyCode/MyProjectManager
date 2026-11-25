@@ -4,10 +4,8 @@ import {
   agentProfileVersions,
   aiJudgments,
   comments,
-  projects,
   ticketEvents,
   ticketReviewTurns,
-  tickets,
   user,
 } from "@/lib/db/schema";
 
@@ -30,7 +28,7 @@ const providerOf = (modelId: string | null | undefined) => (modelId ? modelId.sp
  * `discarded` 판단은 제외한다. 접근 제어(멤버 검사)는 호출하는 쪽 몫이다.
  */
 export async function getTimeline(db: Db, ticketId: string): Promise<TimelineItem[]> {
-  const [events, judgments, turns, notes, [proj]] = await Promise.all([
+  const [events, judgments, turns, notes] = await Promise.all([
     db
       .select({ e: ticketEvents, name: user.name })
       .from(ticketEvents)
@@ -53,11 +51,6 @@ export async function getTimeline(db: Db, ticketId: string): Promise<TimelineIte
       .from(comments)
       .innerJoin(user, eq(user.id, comments.authorId))
       .where(eq(comments.ticketId, ticketId)),
-    db
-      .select({ provider: projects.defaultProvider })
-      .from(tickets)
-      .innerJoin(projects, eq(projects.id, tickets.projectId))
-      .where(eq(tickets.id, ticketId)),
   ]);
 
   const items: TimelineItem[] = [
@@ -107,8 +100,8 @@ export async function getTimeline(db: Db, ticketId: string): Promise<TimelineIte
       ({ t, modelId }): TimelineItem => ({
         at: t.createdAt,
         kind: "review_turn",
-        // 판단 없이 만든 카드(예: 실패 카드)는 프로젝트의 기본 제공자로 표시한다.
-        actor: { kind: "ai", provider: providerOf(modelId) ?? proj?.provider },
+        // R22: 제공자는 연결된 판단에서만 얻는다. 판단 없는 카드(예: 실패 카드)는 추정하지 않고 생략한다.
+        actor: modelId ? { kind: "ai", provider: providerOf(modelId) } : { kind: "ai" },
         data: {
           id: t.id,
           stage: t.stage,

@@ -4,7 +4,7 @@ import { createTestDb } from "../helpers/db";
 import { addMember, makeProject, signUp } from "../helpers/world";
 import { createAuth } from "@/lib/auth";
 import type { Db } from "@/lib/db";
-import { aiJudgments, comments, ticketEvents, ticketReviewTurns } from "@/lib/db/schema";
+import { aiJudgments, comments, projects, ticketEvents, ticketReviewTurns } from "@/lib/db/schema";
 import { getActiveProfile, ensureDefaultProfiles } from "@/lib/agents/profiles";
 import { addComment } from "@/lib/comments/service";
 import { createDraft } from "@/lib/tickets/service";
@@ -120,6 +120,19 @@ describe("getTimeline (PGlite)", () => {
     const tl = await getTimeline(db, s.t.id);
     expect(tl.map((i) => i.kind)).toEqual(["event", "judgment", "review_turn", "comment", "comment"]);
     expect(tl.slice(3).map((i) => (i.data as unknown as { body: string }).body)).toEqual(["a", "b"]);
+  });
+
+  test("판단이 연결되지 않은 검토 카드는 제공자를 추정하지 않는다(프로젝트 기본 제공자가 바뀌어도 동일)", async () => {
+    const s = await setup("tl-f");
+    await db.insert(ticketReviewTurns).values({ ticketId: s.t.id, stage: "dedup", kind: "failed", payload: {}, judgmentId: null, createdAt: at(3) });
+    const find = async () => (await getTimeline(db, s.t.id)).find((i) => i.kind === "review_turn")!;
+    const before = await find();
+    expect(before.actor.kind).toBe("ai");
+    expect(before.actor).not.toHaveProperty("provider");
+    const [p] = await db.select().from(projects).where(eq(projects.id, s.project.id));
+    await db.update(projects).set({ defaultProvider: p.defaultProvider === "openai" ? "anthropic" : "openai" }).where(eq(projects.id, s.project.id));
+    const after = await find();
+    expect(after.actor).toEqual({ kind: "ai" });
   });
 
   test("다른 티켓의 항목은 섞이지 않는다", async () => {
