@@ -35,3 +35,6 @@ yarn-error.log*
 next-env.d.ts
 e2e/.seed.json
 /test-results/
+
+# local fake blob store (MPM_FAKE_BLOB=1)
+/.data/

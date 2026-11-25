@@ -196,3 +196,72 @@
     scroll-behavior: auto !important;
   }
 }
+
+/* 마크다운 편집기(components/editor). 디자인 규칙 5·6: 본문 15~16px/1.7, 모서리 8~10px, 그림자 없음. */
+.mpm-prose {
+  outline: none;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.mpm-prose > * + * { margin-top: 0.75em; }
+.mpm-prose h1, .mpm-prose h2, .mpm-prose h3 { font-weight: 600; line-height: 1.4; margin-top: 1.25em; }
+.mpm-prose h1 { font-size: 1.5rem; }
+.mpm-prose h2 { font-size: 1.25rem; }
+.mpm-prose h3 { font-size: 1.0625rem; }
+.mpm-prose ul { list-style: disc; padding-left: 1.5rem; }
+.mpm-prose ol { list-style: decimal; padding-left: 1.5rem; }
+.mpm-prose li > p { margin: 0; }
+.mpm-prose blockquote { border-left: 3px solid var(--border); padding-left: 1rem; color: var(--muted); }
+.mpm-prose a { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; }
+.mpm-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: var(--sunken);
+  border-radius: 6px;
+  padding: 0.1em 0.35em;
+}
+.mpm-prose pre {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  background: var(--sunken);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+}
+.mpm-prose pre code { background: none; padding: 0; font-size: inherit; }
+.mpm-prose hr { border-color: var(--border); }
+.mpm-prose table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+.mpm-prose th, .mpm-prose td { border: 1px solid var(--border); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+.mpm-prose th { background: var(--sunken); font-weight: 600; }
+.mpm-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--faint);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.mpm-prose .mpm-image { position: relative; display: block; width: fit-content; max-width: 100%; }
+.mpm-prose .mpm-image img { display: block; max-width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--border); }
+.mpm-prose .mpm-image[data-status="uploading"] img { opacity: 0.55; }
+.mpm-prose .mpm-image[data-status="failed"] img { opacity: 0.4; }
+.mpm-prose .mpm-image-uploading,
+.mpm-prose .mpm-image-retry {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 10px;
+}
+.mpm-prose .mpm-image-retry { color: var(--danger); cursor: pointer; }
+.mpm-prose .mpm-image-retry:hover { background: var(--sunken); }
+.mpm-prose .mpm-image-retry:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 50%, transparent); outline-offset: 1px; }
+.mpm-prose .ProseMirror-selectednode img { outline: 2px solid var(--brand); outline-offset: 2px; }
