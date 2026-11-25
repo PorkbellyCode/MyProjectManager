@@ -117,11 +117,19 @@ export async function analyzeRepo(db: Db, projectId: string, deps: AnalyzeDeps =
   }
 }
 
-export async function getLatestSnapshot(db: Db, projectId: string): Promise<RepoSnapshot | null> {
+export async function getLatestSnapshot(
+  db: Db,
+  projectId: string,
+  opts: { status?: "ok" } = {},
+): Promise<RepoSnapshot | null> {
   const [row] = await db
     .select()
     .from(repoSnapshots)
-    .where(eq(repoSnapshots.projectId, projectId))
+    .where(
+      opts.status
+        ? and(eq(repoSnapshots.projectId, projectId), eq(repoSnapshots.status, opts.status))
+        : eq(repoSnapshots.projectId, projectId),
+    )
     .orderBy(desc(repoSnapshots.createdAt), desc(repoSnapshots.id))
     .limit(1);
   return row ?? null;
