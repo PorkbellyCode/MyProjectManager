@@ -13,6 +13,7 @@ import {
   pickAccent,
   providerAiTokens,
   providerPalette,
+  accentStyleText,
 } from "@/lib/theme/accent";
 import { getPreferences, savePreferences } from "@/lib/preferences/service";
 
@@ -42,6 +43,17 @@ describe("accent helpers", () => {
     expect(pickAccent({ override: "#111111", projectDefault: "#222222", provider: "google" })).toBe("#111111");
     expect(pickAccent({ override: null, projectDefault: "#222222", provider: "google" })).toBe("#222222");
     expect(pickAccent({ override: null, projectDefault: null, provider: "google" })).toBe("#1D4ED8");
+  });
+
+  test("저장된 값이 #RRGGBB가 아니면 제공자 색으로 돌아간다(스타일 주입 방지)", () => {
+    const evil = "</style><script>alert(1)</script>";
+    expect(pickAccent({ override: null, projectDefault: evil, provider: "google" })).toBe("#1D4ED8");
+    expect(pickAccent({ override: evil, projectDefault: null, provider: "openai" })).toBe("#0F766E");
+    expect(pickAccent({ override: "red", projectDefault: "red", provider: "anthropic" })).toBe("#C2410C");
+    expect(pickAccent({ override: "red", projectDefault: "#7c3aed", provider: "anthropic" })).toBe("#7C3AED");
+    const css = accentStyleText(evil, "google");
+    expect(css).not.toContain("<");
+    expect(css).toMatch(/^html:root\{(--[a-z-]+:#[0-9A-F]{6};?)+\}$/);
   });
 
   test("프리셋은 다크 짝을 쓰고 직접 고른 색은 그대로 쓴다", () => {
@@ -91,6 +103,15 @@ describe("getProjectAccent / savePreferences (PGlite)", () => {
     const other = (await signUp(createAuth(db), "acc2@x.com", "다른")).id;
     await savePreferences(db, userId, { accentOverride: "#0F766E" });
     expect(await getProjectAccent(db, projectId, other)).toBe("#7C3AED");
+  });
+
+  test("DB에 이상한 accentDefault가 있어도 getProjectAccent는 제공자 색", async () => {
+    await db.update(projects).set({ accentDefault: "</style><script>alert(1)</script>" }).where(eq(projects.id, projectId));
+    await savePreferences(db, userId, { accentOverride: null });
+    expect(await getProjectAccent(db, projectId, userId)).toBe("#1D4ED8");
+    await db.update(projects).set({ accentDefault: "red" }).where(eq(projects.id, projectId));
+    expect(await getProjectAccent(db, projectId, userId)).toBe("#1D4ED8");
+    await db.update(projects).set({ accentDefault: "#7C3AED" }).where(eq(projects.id, projectId));
   });
 
   test("없는 프로젝트는 null", async () => {

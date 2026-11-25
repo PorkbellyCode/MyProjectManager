@@ -94,7 +94,12 @@ export function pickAccent(input: {
   projectDefault: string | null | undefined;
   provider: AiProvider;
 }): string {
-  return input.override ?? input.projectDefault ?? providerPalette(input.provider).accent;
+  // 데이터에서 온 값은 #RRGGBB가 아니면 버린다(화면 스타일에 그대로 들어가므로).
+  return (
+    normalizeHex(input.override ?? "") ??
+    normalizeHex(input.projectDefault ?? "") ??
+    providerPalette(input.provider).accent
+  );
 }
 
 /** 프로젝트 화면의 강조색(라이트 값). 프로젝트가 없으면 null. */
@@ -121,4 +126,30 @@ export function resolveAccentVars(accentLight: string) {
     onLight: onAccent(pair.light),
     onDark: onAccent(pair.dark),
   };
+}
+
+const SAFE_HEX = /^#[0-9A-F]{6}$/;
+
+/**
+ * 셸이 <style>로 내보내는 html:root 변수 블록. 값은 #RRGGBB(대문자)로 검증된 것만 쓰고,
+ * 아니면 제공자 색으로 바꾼다. 어떤 입력이 와도 `<`나 `;` 같은 문자는 나오지 않는다.
+ */
+export function accentStyleText(accent: string, provider: AiProvider): string {
+  const safe = (v: string, fallback: string) => (SAFE_HEX.test(v) ? v : fallback);
+  const fallback = providerPalette(provider).accent;
+  const a = accentPair(safe(normalizeHex(accent) ?? "", fallback));
+  const ai = providerAiTokens(provider);
+  const decl: [string, string][] = [
+    ["--accent-l", a.light],
+    ["--accent-d", a.dark],
+    ["--on-accent-l", onAccent(a.light)],
+    ["--on-accent-d", onAccent(a.dark)],
+    ["--ai-tint-l", ai.light.tint],
+    ["--ai-tint-d", ai.dark.tint],
+    ["--ai-ring-l", ai.light.ring],
+    ["--ai-ring-d", ai.dark.ring],
+    ["--ai-text-l", ai.light.text],
+    ["--ai-text-d", ai.dark.text],
+  ];
+  return `html:root{${decl.filter(([, v]) => SAFE_HEX.test(v)).map(([k, v]) => `${k}:${v}`).join(";")}}`;
 }
