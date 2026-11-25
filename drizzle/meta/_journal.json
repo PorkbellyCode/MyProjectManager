@@ -50,6 +50,13 @@
       "when": 1795587299569,
       "tag": "0006_green_hitman",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795588297112,
+      "tag": "0007_steady_obadiah_stane",
+      "breakpoints": true
     }
   ]
 }
