@@ -3,3 +3,5 @@ export * from "./projects";
 export * from "./tickets";
 export * from "./social";
 export * from "./jobs";
+export * from "./ai";
+export * from "./review";

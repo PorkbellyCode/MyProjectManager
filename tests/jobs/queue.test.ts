@@ -3,7 +3,7 @@ import { eq } from "drizzle-orm";
 import { createTestDb } from "../helpers/db";
 import { createPgTestDb, pgAvailable } from "../helpers/pg";
 import type { Db } from "@/lib/db";
-import { jobs } from "@/lib/db/schema";
+import { jobs, type JobKind } from "@/lib/db/schema";
 import { enqueue, runPending, type Handler } from "@/lib/jobs/queue";
 import { GET } from "@/app/api/cron/jobs/route";
 
@@ -82,11 +82,11 @@ describe("작업 큐", () => {
   });
 
   test("핸들러가 없는 kind는 failed + 'no handler: <kind>'", async () => {
-    const id = await enqueue(db, "ticket.silentReview", {});
+    const id = await enqueue(db, "test.unregistered" as JobKind, {});
     expect(await runPending(db, {})).toBe(1);
     const row = await getJob(db, id);
     expect(row.status).toBe("failed");
-    expect(row.lastError).toBe("no handler: ticket.silentReview");
+    expect(row.lastError).toBe("no handler: test.unregistered");
   });
 
   test("limit만큼만, 오래된 순으로 처리한다", async () => {
@@ -246,7 +246,7 @@ describe("/api/cron/jobs", () => {
   test("올바른 시크릿이면 runPending을 돌리고 { processed }를 돌려준다", async () => {
     const t = await createTestDb();
     holder.db = t.db;
-    await enqueue(t.db, "repo.analyze", {}); // 핸들러 레지스트리가 비어 있으므로 failed로 처리된다
+    await enqueue(t.db, "test.unregistered" as JobKind, {}); // 아직 등록된 핸들러가 없는 종류는 failed로 처리된다
     const res = await GET(
       new Request("http://localhost/api/cron/jobs", {
         headers: { authorization: `Bearer ${process.env.CRON_SECRET}` },
@@ -256,7 +256,7 @@ describe("/api/cron/jobs", () => {
     expect(await res.json()).toEqual({ processed: 1 });
     const [row] = await t.db.select().from(jobs);
     expect(row.status).toBe("failed");
-    expect(row.lastError).toBe("no handler: repo.analyze");
+    expect(row.lastError).toBe("no handler: test.unregistered");
     await t.close();
   });
 });

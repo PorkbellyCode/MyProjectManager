@@ -57,8 +57,10 @@ async function recipientsFor(tx: Db, event: NotifiableEvent, t: Ticket): Promise
     case "reopen":
       return nz(t.assigneeId);
     case "close":
-    case "commented":
       return [t.authorId, ...nz(t.assigneeId), ...(await subscribers(tx, t.id))];
+    case "commented":
+      // R1: 담당자 = assigneeId, 또는 assigned 상태의 targetUserId
+      return [t.authorId, ...nz(t.assigneeId ?? (t.status === "assigned" ? t.targetUserId : null)), ...(await subscribers(tx, t.id))];
     case "summary_edited":
       return nz(t.targetUserId ?? t.assigneeId);
     case "wont_do_proposed":
