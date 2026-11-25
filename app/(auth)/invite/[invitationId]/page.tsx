@@ -1,10 +1,9 @@
+import { Suspense } from "react";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { invitation, projects } from "@/lib/db/schema";
 import { getSessionUser } from "@/lib/auth";
 import { InviteAccept } from "./invite-accept";
-
-export const dynamic = "force-dynamic";
 
 const EXPIRED = "초대가 만료됐어요. 관리자에게 다시 요청해 주세요.";
 
@@ -12,7 +11,16 @@ function isExpired(expiresAt: Date) {
   return expiresAt.getTime() <= Date.now();
 }
 
-export default async function InvitePage({ params }: { params: Promise<{ invitationId: string }> }) {
+// cacheComponents: params/DB/세션은 요청 시점 데이터이므로 Suspense 경계 안에서 읽는다.
+export default function InvitePage({ params }: { params: Promise<{ invitationId: string }> }) {
+  return (
+    <Suspense fallback={<main aria-busy="true" />}>
+      <InviteContent params={params} />
+    </Suspense>
+  );
+}
+
+async function InviteContent({ params }: { params: Promise<{ invitationId: string }> }) {
   const { invitationId } = await params;
   const [inv] = await db.select().from(invitation).where(eq(invitation.id, invitationId)).limit(1);
 
