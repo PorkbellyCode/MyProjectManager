@@ -17,3 +17,12 @@ test("필수 값이 모두 있으면 선택 변수는 비어 있어도 통과", 
   expect(env.DATABASE_URL).toBeTruthy();
   expect(env.ANTHROPIC_API_KEY).toBeUndefined();
 });
+
+test("BLOB_READ_WRITE_TOKEN과 BLOB_STORE_ID가 없어도 통과 (OIDC 연결)", async () => {
+  vi.stubEnv("BLOB_READ_WRITE_TOKEN", "");
+  vi.stubEnv("BLOB_STORE_ID", "");
+  vi.resetModules();
+  const { env } = await import("@/lib/env");
+  expect(env.BLOB_READ_WRITE_TOKEN).toBeUndefined();
+  expect(env.BLOB_STORE_ID).toBeUndefined();
+});
