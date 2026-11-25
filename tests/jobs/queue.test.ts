@@ -166,6 +166,28 @@ describe("작업 큐", () => {
     expect(bStartUpdatedAt!.getTime()).toBeGreaterThan(bUpdatedAtDuringA!.getTime());
   });
 
+  test("기다리는 사이 회수된 배치 작업은 핸들러를 실행하지 않는다", async () => {
+    const a = await enqueue(db, "ticket.summarize", { i: 0 });
+    const b = await enqueue(db, "ticket.summarize", { i: 1 });
+    await db.update(jobs).set({ createdAt: new Date(Date.now() - 2000) }).where(eq(jobs.id, a));
+    await db.update(jobs).set({ createdAt: new Date(Date.now() - 1000) }).where(eq(jobs.id, b));
+    const ran: number[] = [];
+    await runPending(db, {
+      "ticket.summarize": async (p) => {
+        const i = (p as { i: number }).i;
+        ran.push(i);
+        if (i === 0) {
+          // a가 도는 동안 b가 회수된 상황
+          await db.update(jobs).set({ status: "pending", attempts: 1 }).where(eq(jobs.id, b));
+        }
+      },
+    });
+    expect(ran).toEqual([0]);
+    const row = await getJob(db, b);
+    expect(row.status).toBe("pending");
+    expect(row.attempts).toBe(1);
+  });
+
   test("회수된 작업을 늦게 끝낸 핸들러는 결과를 덮어쓰지 않는다", async () => {
     const id = await enqueue(db, "repo.analyze", {});
     await runPending(db, {

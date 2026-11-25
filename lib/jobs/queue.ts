@@ -80,7 +80,13 @@ export async function runPending(
       continue;
     }
     // 배치 안에서 기다린 시간이 stale 판정에 들어가지 않도록 시작 직전에 updatedAt을 갱신한다.
-    await db.update(jobs).set({ updatedAt: sql`now()` }).where(stillMine(job));
+    // 0행이면 기다리는 사이 다른 러너가 회수·재실행한 작업이므로 핸들러를 실행하지 않는다.
+    const touched = await db
+      .update(jobs)
+      .set({ updatedAt: sql`now()` })
+      .where(stillMine(job))
+      .returning({ id: jobs.id });
+    if (touched.length === 0) continue;
     let error: string | undefined;
     try {
       await withTimeout(() => handler(job.payload, db), timeoutMs);
