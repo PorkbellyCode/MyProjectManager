@@ -139,10 +139,16 @@ describe("buildTools", () => {
     expect(ev.ticketIds.has(otherTicket.id)).toBe(false);
   });
 
-  test("ok 스냅샷의 facts가 null이어도 loadEvidenceCtx는 깨지지 않는다", async () => {
-    const { db: db2, close: close2 } = await createTestDb();
-    const ev = await loadEvidenceCtx(db2, "00000000-0000-4000-8000-000000000000");
+  test("ok 스냅샷의 facts·overview가 null이면 available:false, loadEvidenceCtx는 깨지지 않는다", async () => {
+    const auth = createAuth(db);
+    const u = await signUp(auth, "nullfacts@example.com", "널");
+    const { project } = await makeProject(db, auth, "tools-null", u.id);
+    await db.insert(repoSnapshots).values({ projectId: project.id, facts: null, overview: null, status: "ok" });
+    const c = { db, projectId: project.id, ticketId: null } satisfies ToolContext;
+    expect(await run(c, "listRecentChanges", {})).toEqual({ available: false });
+    expect(await run(c, "getRepoOverview", {})).toEqual({ available: false });
+    const ev = await loadEvidenceCtx(db, project.id);
     expect(ev.commitShas.size).toBe(0);
-    await close2();
+    expect(ev.prNumbers.size).toBe(0);
   });
 });

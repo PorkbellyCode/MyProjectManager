@@ -39,15 +39,18 @@ function commitExists(sha: string, ctx: EvidenceCtx): boolean {
   return hits === 1;
 }
 
-function refValid(ref: string, ctx: EvidenceCtx): boolean {
+function refValid(ref: string, ctx: EvidenceCtx, selfId?: string): boolean {
   const i = ref.indexOf(":");
   if (i < 0) return false;
   const kind = ref.slice(0, i);
   const value = ref.slice(i + 1);
   if (!value) return false;
   switch (kind) {
-    case "ticket":
-      return ctx.ticketIds.has(value);
+    case "ticket": {
+      const t = ctx.ticketIds.get(value);
+      // 제출된 티켓만 근거가 된다. 검토 중인 티켓 자신은 근거가 될 수 없다.
+      return !!t && value !== selfId && t.status !== "draft" && t.status !== "withdrawn_ai_resolved";
+    }
     case "commit":
       return commitExists(value, ctx);
     case "pr":
@@ -60,8 +63,8 @@ function refValid(ref: string, ctx: EvidenceCtx): boolean {
 }
 
 /** 형식 오류·없는 대상·다른 프로젝트 ref를 제거한다. */
-export function validEvidence(evidence: Evidence[], ctx: EvidenceCtx): Evidence[] {
-  return evidence.filter((e) => refValid(e.ref, ctx));
+export function validEvidence(evidence: Evidence[], ctx: EvidenceCtx, selfId?: string): Evidence[] {
+  return evidence.filter((e) => refValid(e.ref, ctx, selfId));
 }
 
 export function normalizeDedup(
@@ -94,9 +97,10 @@ export const WEAK_RESOLVE_PREFIX = "관련 변경이 있었던 것으로 보여�
 export function normalizeResolve(
   r: { kind: "already_resolved" | "expected_behavior" | "none"; message: string; evidence: Evidence[] },
   ctx: EvidenceCtx,
+  selfId?: string,
 ): ResolveResult | null {
   if (r.kind === "none") return null;
-  const evidence = validEvidence(r.evidence, ctx);
+  const evidence = validEvidence(r.evidence, ctx, selfId);
   if (evidence.length === 0) return null;
 
   if (r.kind === "expected_behavior") {
@@ -108,7 +112,8 @@ export function normalizeResolve(
     if (!e.ref.startsWith("ticket:")) return false;
     return ctx.ticketIds.get(e.ref.slice("ticket:".length))?.closeReason === "resolved_confirmed";
   });
-  return strong
-    ? { kind: r.kind, message: r.message, evidence, strength: "strong" }
-    : { kind: r.kind, message: WEAK_RESOLVE_PREFIX + r.message, evidence, strength: "weak" };
+  if (strong) return { kind: r.kind, message: r.message, evidence, strength: "strong" };
+  // 약한 근거는 변경(커밋·PR)이 있을 때만. 문서·열린 티켓·안 하기로 한 티켓만으로는 카드를 띄우지 않는다.
+  if (!evidence.some((e) => e.ref.startsWith("commit:") || e.ref.startsWith("pr:"))) return null;
+  return { kind: r.kind, message: WEAK_RESOLVE_PREFIX + r.message, evidence, strength: "weak" };
 }

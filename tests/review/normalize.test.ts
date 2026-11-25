@@ -39,6 +39,14 @@ describe("validEvidence", () => {
   });
 });
 
+describe("validEvidence ticket 근거", () => {
+  test("초안·철회·자기 자신 티켓 ref는 제거한다", () => {
+    const out = validEvidence([ev("ticket:t-draft"), ev("ticket:t-withdrawn"), ev("ticket:t-self"), ev("ticket:t-open")], ctx, "t-self");
+    expect(out.map((e) => e.ref)).toEqual(["ticket:t-open"]);
+    expect(validEvidence([ev("ticket:t-self")], ctx)).toHaveLength(1); // selfId 없으면 그대로
+  });
+});
+
 describe("normalizeResolve", () => {
   test("다른 프로젝트 티켓·없는 커밋 근거는 제거되고, 남는 게 없으면 null", () => {
     expect(
@@ -60,10 +68,27 @@ describe("normalizeResolve", () => {
     const r = normalizeResolve({ kind: "already_resolved", message: "고쳐졌어요", evidence: [ev("commit:abcdef1234567890")] }, ctx);
     expect(r).toMatchObject({ strength: "weak", message: "관련 변경이 있었던 것으로 보여요. 고쳐졌어요" });
   });
-  test("resolved_confirmed가 아닌 티켓 근거만 있으면 weak", () => {
-    const r = normalizeResolve({ kind: "already_resolved", message: "m", evidence: [ev("ticket:t-wont")] }, ctx);
-    expect(r?.strength).toBe("weak");
-    expect(r?.message.startsWith("관련 변경이 있었던 것으로 보여요. ")).toBe(true);
+  test("wont_do 티켓 근거만 있으면 null", () => {
+    expect(normalizeResolve({ kind: "already_resolved", message: "m", evidence: [ev("ticket:t-wont")] }, ctx)).toBeNull();
+  });
+  test("열린 티켓 근거만 있으면 null", () => {
+    expect(normalizeResolve({ kind: "already_resolved", message: "m", evidence: [ev("ticket:t-open")] }, ctx)).toBeNull();
+  });
+  test("doc 근거만 있는 already_resolved는 null", () => {
+    expect(normalizeResolve({ kind: "already_resolved", message: "m", evidence: [ev("doc:d1")] }, ctx)).toBeNull();
+  });
+  test("PR 근거만 있으면 weak, 열린 티켓이 섞여도 weak", () => {
+    const r = normalizeResolve({ kind: "already_resolved", message: "m", evidence: [ev("ticket:t-open"), ev("pr:12")] }, ctx);
+    expect(r).toMatchObject({ strength: "weak", message: "관련 변경이 있었던 것으로 보여요. m" });
+  });
+  test("자기 자신·초안 티켓의 resolved 근거는 strong이 되지 못한다", () => {
+    const c: EvidenceCtx = {
+      ...ctx,
+      ticketIds: new Map([...ctx.ticketIds, ["t-self-done", { status: "closed", closeReason: "resolved_confirmed" }]]),
+    };
+    expect(
+      normalizeResolve({ kind: "already_resolved", message: "m", evidence: [ev("ticket:t-self-done")] }, c, "t-self-done"),
+    ).toBeNull();
   });
   test("도메인 지식 근거 없는 expected_behavior → null", () => {
     expect(normalizeResolve({ kind: "expected_behavior", message: "의도예요", evidence: [ev("commit:abcdef1"), ev("ticket:t-open")] }, ctx)).toBeNull();
