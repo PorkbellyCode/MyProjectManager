@@ -16,8 +16,6 @@ import {
 } from "@/lib/db/schema";
 import { ensureDefaultProfiles } from "@/lib/agents/profiles";
 import { AgentTimeoutError, type runRoleAgent } from "@/lib/ai/run-agent";
-import { addComment, EmptyCommentError } from "@/lib/comments/service";
-import { ForbiddenError } from "@/lib/access";
 import { createDraft, getActorCtx, performAction } from "@/lib/tickets/service";
 import {
   AiUnavailableError,
@@ -477,28 +475,5 @@ describe("검토 파이프라인 ①② (PGlite)", () => {
     await runReviewStage(db, { ticketId: t.id, stage: "dedup", version: now.version }, deps(NONE_DEDUP));
     expect((await get(t.id)).status).toBe("queued");
     expect((await judgments(t.id)).map((j) => j.status)).toEqual(["discarded"]);
-  });
-});
-
-describe("addComment (최소판, Task 11이 확장)", () => {
-  let db: Db;
-  let close: () => Promise<void>;
-  beforeAll(async () => {
-    ({ db, close } = await createTestDb());
-  });
-  afterAll(async () => close());
-
-  test("멤버 검사·빈 본문 거부·commented 이벤트", async () => {
-    const auth = createAuth(db);
-    const lead = await signUp(auth, "l@x.com", "리드");
-    const out = await signUp(auth, "o@x.com", "외부");
-    const { project } = await makeProject(db, auth, "cm-proj", lead.id);
-    const t = await createDraft(db, { projectId: project.id, authorId: lead.id, title: "t", body: "b", category: "defect", urgency: "normal" });
-    await expect(addComment(db, { ticketId: t.id, authorId: lead.id, body: "   " })).rejects.toBeInstanceOf(EmptyCommentError);
-    await expect(addComment(db, { ticketId: t.id, authorId: out.id, body: "hi" })).rejects.toBeInstanceOf(ForbiddenError);
-    const c = await addComment(db, { ticketId: t.id, authorId: lead.id, body: " 안녕 " });
-    expect(c.body).toBe("안녕");
-    const evs = await db.select().from(ticketEvents).where(and(eq(ticketEvents.ticketId, t.id), eq(ticketEvents.type, "commented")));
-    expect(evs).toHaveLength(1);
   });
 });

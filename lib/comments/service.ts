@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import type { Db } from "@/lib/db";
-import { ForbiddenError, getMembership } from "@/lib/access";
+import { getMembership } from "@/lib/access";
 import { comments, ticketEvents, tickets } from "@/lib/db/schema";
 import { emitNotifications } from "@/lib/notifications/emit";
 import { TicketNotFoundError } from "@/lib/tickets/service";
@@ -14,7 +14,7 @@ export class EmptyCommentError extends Error {
 
 /**
  * 댓글을 단다. 프로젝트 멤버만, 빈 본문은 거부. 같은 트랜잭션에서 `commented` 이벤트와 알림을 남긴다.
- * Task 9의 "같은 건으로 합류"가 쓴다. 타임라인 등은 Task 11이 확장한다.
+ * 비멤버는 없는 티켓과 같은 `TicketNotFoundError`(404). Task 9의 "같은 건으로 합류"도 이 함수를 쓴다.
  */
 export async function addComment(db: Db, input: { ticketId: string; authorId: string; body: string }) {
   const body = input.body.trim();
@@ -23,7 +23,7 @@ export async function addComment(db: Db, input: { ticketId: string; authorId: st
     const [t] = await tx.select().from(tickets).where(eq(tickets.id, input.ticketId));
     if (!t) throw new TicketNotFoundError();
     const m = await getMembership(tx, t.projectId, input.authorId);
-    if (!m) throw new ForbiddenError("이 프로젝트의 멤버가 아니에요.");
+    if (!m) throw new TicketNotFoundError() // 비멤버에게는 티켓 존재를 알리지 않는다(404);
     const [comment] = await tx.insert(comments).values({ ticketId: t.id, authorId: input.authorId, body }).returning();
     const [event] = await tx
       .insert(ticketEvents)
