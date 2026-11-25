@@ -5,13 +5,24 @@ import type { Urgency } from "@/lib/db/schema/tickets";
 
 export const UNKNOWN_TEXT = "알 수 없음";
 
+/** 모델 출력. 열린 키 객체는 strict 스키마에 못 쓰므로 항목은 {key, value} 배열로 받는다(R21). */
 export const SummaryResult = z.object({
   summary: z.string().describe("무엇이 문제이고 무엇이 필요한지 짧은 마크다운"),
-  fields: z.record(z.string(), z.string().nullable()).describe("필요 정보 key별 값. 답을 못 받았으면 '알 수 없음', 해당 없으면 null"),
+  fields: z
+    .array(z.object({ key: z.string(), value: z.string().nullable() }))
+    .describe("필요 정보 key별 값. 답을 못 받았으면 '알 수 없음', 해당 없으면 null"),
   fillRate: z.number().describe("채운 필수 항목 수 / 전체 필수 항목 수"),
   urgencyNote: z.string().nullable().describe("긴급도 참고 문구. 요청자가 정한 값을 적기만 한다. 없으면 null"),
 });
 export type SummaryResult = z.infer<typeof SummaryResult>;
+
+/** 코드가 정규화한 정리 결과(저장·마크다운용). fields는 key → 값 맵. */
+export type SummaryData = {
+  summary: string;
+  fields: Record<string, string | null>;
+  fillRate: number;
+  urgencyNote: string | null;
+};
 
 export const summarizeSystem = (instructions: string, fields: RequiredField[]) =>
   `${instructions}
@@ -41,7 +52,7 @@ export const URGENCY_LABEL: Record<Urgency, string> = { low: "낮음", normal: "
 
 /** 정리본 마크다운. 모델이 아니라 코드가 같은 입력에 같은 결과를 만든다. */
 export function renderSummaryMarkdown(input: {
-  result: SummaryResult;
+  result: SummaryData;
   fields: RequiredField[];
   generatedFrom: SummaryOrigin;
   urgency: Urgency;

@@ -69,9 +69,9 @@ const questionSchema = z.object({
   fillsKey: z.string().describe("채우려는 필요 정보 항목의 key"),
   type: z.enum(QUESTION_TYPES),
   prompt: z.string().describe("요청자에게 보여 줄 질문"),
-  options: z.array(z.string()).optional().describe("single/multi/scale의 선택지. '직접 입력'과 '모르겠어요'는 넣지 않는다"),
+  options: z.array(z.string()).nullable().describe("single/multi/scale의 선택지(text/attachment는 null). '직접 입력'과 '모르겠어요'는 넣지 않는다"),
   why: z.string().describe("왜 필요한지 한 줄"),
-  justification: z.string().optional().describe("text/attachment일 때 왜 선택지로 물을 수 없는지"),
+  justification: z.string().nullable().describe("text/attachment일 때 왜 선택지로 물을 수 없는지. 아니면 null"),
 });
 
 export const InterviewResult = z.object({
@@ -79,6 +79,15 @@ export const InterviewResult = z.object({
   questions: z.array(questionSchema),
 });
 export type InterviewResult = z.infer<typeof InterviewResult>;
+
+/** 모델 출력(없는 값은 null)을 저장용 질문(없는 값은 생략)으로 바꾼다. */
+export function toQuestions(raw: InterviewResult["questions"]): Question[] {
+  return raw.map(({ options, justification, ...q }) => ({
+    ...q,
+    ...(options ? { options } : {}),
+    ...(justification ? { justification } : {}),
+  }));
+}
 
 export type AnsweredQuestion = {
   fillsKey: string;

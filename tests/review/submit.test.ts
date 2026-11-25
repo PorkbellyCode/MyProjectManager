@@ -191,7 +191,14 @@ describe("제출, 정리본, 바로 제출 (PGlite)", () => {
 
   const SUMMARY = {
     summary: "로그인 버튼이 반응하지 않아요.",
-    fields: { steps: "로그인 버튼 클릭", expected: "로그인됨", actual: null, environment: "무시됨", frequency: "알 수 없음", zzz: "목록에 없는 키" },
+    fields: [
+      { key: "steps", value: "로그인 버튼 클릭" },
+      { key: "expected", value: "로그인됨" },
+      { key: "actual", value: null },
+      { key: "environment", value: "무시됨" },
+      { key: "frequency", value: "알 수 없음" },
+      { key: "zzz", value: "목록에 없는 키" },
+    ],
     fillRate: 0.99,
     urgencyNote: "요청자가 긴급도를 높음으로 표시했어요",
   };
@@ -206,8 +213,8 @@ describe("제출, 정리본, 바로 제출 (PGlite)", () => {
       deps({
         done: false,
         questions: [
-          { id: "a", fillsKey: "environment", type: "single", prompt: "어디서 겪으셨나요?", options: ["PC 웹"], why: "w" },
-          { id: "b", fillsKey: "frequency", type: "scale", prompt: "매번 그런가요?", options: ["매번"], why: "w" },
+          { id: "a", fillsKey: "environment", type: "single", prompt: "어디서 겪으셨나요?", options: ["PC 웹"], why: "w", justification: null },
+          { id: "b", fillsKey: "frequency", type: "scale", prompt: "매번 그런가요?", options: ["매번"], why: "w", justification: null },
         ],
       }),
     );

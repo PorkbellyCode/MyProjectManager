@@ -16,6 +16,7 @@ import {
   InterviewResult,
   MAX_ROUNDS,
   normalizeQuestions,
+  toQuestions,
   type Question,
 } from "@/lib/agents/interview";
 import { NO_RECOMMENDATION, normalizeRecommendation, RecommendResult, recommendSystem, type Recommendation } from "@/lib/agents/recommend";
@@ -411,7 +412,7 @@ async function runInterviewStage(db: Db, t: Ticket, version: number, profile: Ag
   const prompt = [ticketPrompt(t), "", "## 지금까지의 인터뷰", renderAnswered(answered)].join("\n");
   const res = await invoke(db, t, profile, interviewSystem(profile.instructions, { round, fields, filled }), InterviewResult, deps, prompt);
   const questions: Question[] = assignQuestionIds(
-    normalizeQuestions(res.parsed.questions as Question[], { filledKeys: filled, knownKeys: new Set(fields.map((f) => f.key)) }),
+    normalizeQuestions(toQuestions(res.parsed.questions), { filledKeys: filled, knownKeys: new Set(fields.map((f) => f.key)) }),
     round,
   );
   const asks = !res.parsed.done && questions.length > 0;

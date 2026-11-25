@@ -21,6 +21,7 @@ import {
   filledKeys,
   InterviewResult,
   normalizeQuestions,
+  toQuestions,
   withDisplayOptions,
   type Question,
 } from "@/lib/agents/interview";
@@ -127,6 +128,16 @@ describe("질문 정규화 (순수)", () => {
     }
   });
 
+  test("toQuestions: 모델 출력의 null은 생략으로 바꾼다", () => {
+    const [a, b] = toQuestions([
+      { id: "1", fillsKey: "steps", type: "text", prompt: "p", why: "w", options: null, justification: "j" },
+      { id: "2", fillsKey: "impact", type: "single", prompt: "p", why: "w", options: ["x"], justification: null },
+    ]);
+    expect(a).toEqual({ id: "1", fillsKey: "steps", type: "text", prompt: "p", why: "w", justification: "j" });
+    expect(b).not.toHaveProperty("justification");
+    expect(b.options).toEqual(["x"]);
+  });
+
   test("스키마: InterviewResult / RecommendResult", () => {
     expect(InterviewResult.parse({ done: true, questions: [] })).toEqual({ done: true, questions: [] });
     expect(() => InterviewResult.parse({ done: "x" })).toThrow();
@@ -180,9 +191,9 @@ describe("검토 파이프라인 ③ 인터뷰, ④ 추천 (PGlite)", () => {
     runReviewStage(db, { ticketId: t.id, stage, version: t.version }, d);
 
   const Q1 = [
-    { id: "x", fillsKey: "environment", type: "single", prompt: "어디서 겪으셨나요?", options: ["모바일 앱", "PC 웹"], why: "대상을 정하는 데 필요해요" },
-    { id: "y", fillsKey: "frequency", type: "scale", prompt: "매번 그런가요?", options: ["매번", "가끔"], why: "빈도를 알아야 해요" },
-    { id: "z", fillsKey: "steps", type: "text", prompt: "순서를 알려주세요", why: "필요해요" },
+    { id: "x", fillsKey: "environment", type: "single", prompt: "어디서 겪으셨나요?", options: ["모바일 앱", "PC 웹"], why: "대상을 정하는 데 필요해요", justification: null },
+    { id: "y", fillsKey: "frequency", type: "scale", prompt: "매번 그런가요?", options: ["매번", "가끔"], why: "빈도를 알아야 해요", justification: null },
+    { id: "z", fillsKey: "steps", type: "text", prompt: "순서를 알려주세요", why: "필요해요", options: null, justification: null },
   ];
 
   beforeAll(async () => {
@@ -351,7 +362,7 @@ describe("검토 파이프라인 ③ 인터뷰, ④ 추천 (PGlite)", () => {
   test("필수 항목이 답변으로 모두 차면 LLM 호출 없이 추천으로 간다", async () => {
     const t = await atInterview();
     await db.update(tickets).set({ category: "inquiry" }).where(eq(tickets.id, t.id));
-    await run(t, "interview", deps({ done: false, questions: [{ id: "a", fillsKey: "question", type: "single", prompt: "무엇이 궁금하세요?", options: ["a"], why: "w" }] }));
+    await run(t, "interview", deps({ done: false, questions: [{ id: "a", fillsKey: "question", type: "single", prompt: "무엇이 궁금하세요?", options: ["a"], why: "w", justification: null }] }));
     await answerAll(t.id, [{ questionId: "r1-q1", value: "a" }]);
     const mid = await get(t.id);
     let called = 0;
@@ -382,7 +393,7 @@ describe("검토 파이프라인 ③ 인터뷰, ④ 추천 (PGlite)", () => {
 
   test("첨부 질문은 attachmentUrls로 답한다", async () => {
     const t = await atInterview();
-    await run(t, "interview", deps({ done: false, questions: [{ id: "s", fillsKey: "screenshot", type: "attachment", prompt: "캡처를 올려 주세요", why: "화면 문제예요", justification: "글로는 설명이 어려워요" }] }));
+    await run(t, "interview", deps({ done: false, questions: [{ id: "s", fillsKey: "screenshot", type: "attachment", prompt: "캡처를 올려 주세요", why: "화면 문제예요", options: null, justification: "글로는 설명이 어려워요" }] }));
     await answerAll(t.id, [{ questionId: "r1-q1", value: "", attachmentUrls: ["https://blob.example/a.png"] }]);
     expect((await get(t.id)).status).toBe("ai_reviewing");
   });

@@ -8,6 +8,7 @@ import {
   computeFillRate,
   renderSummaryMarkdown,
   SummaryResult,
+  type SummaryData,
   summarizeSystem,
   UNKNOWN_TEXT,
 } from "@/lib/agents/summarize";
@@ -63,10 +64,11 @@ export async function summarizeTicket(db: Db, ticketId: string, deps: ReviewDeps
   }
 
   const keys = new Set(fields.map((f) => f.key));
+  const given = new Map(res.parsed.fields.map((x) => [x.key, x.value]));
   const values: Record<string, string | null> = {};
-  for (const f of fields) values[f.key] = res.parsed.fields[f.key] ?? null;
+  for (const f of fields) values[f.key] = given.get(f.key) ?? null;
   for (const a of answered) if (a.value === UNKNOWN_VALUE && keys.has(a.fillsKey)) values[a.fillsKey] = UNKNOWN_TEXT;
-  const result: SummaryResult = {
+  const result: SummaryData = {
     summary: res.parsed.summary,
     fields: values,
     fillRate: computeFillRate(fields, values),

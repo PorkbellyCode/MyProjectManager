@@ -11,7 +11,7 @@ export const repoOverviewSchema = z.object({
   stack: z.array(z.string()),
   modules: z.array(z.object({ path: z.string(), summary: z.string(), groupId: z.string().nullable() })),
   screens: z.array(z.object({ path: z.string(), name: z.string(), groupId: z.string().nullable() })),
-  apis: z.array(z.object({ path: z.string(), method: z.string().optional(), groupId: z.string().nullable() })),
+  apis: z.array(z.object({ path: z.string(), method: z.string().nullable(), groupId: z.string().nullable() })),
   domains: z.array(z.object({ name: z.string(), modulePaths: z.array(z.string()) })),
 });
 export type RepoOverview = z.infer<typeof repoOverviewSchema>;
