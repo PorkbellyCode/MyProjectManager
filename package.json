@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "build:check": "SKIP_ENV_VALIDATION=1 next build",
-    "vercel-build": "drizzle-kit migrate && next build",
+    "vercel-build": "node scripts/vercel-build.mjs",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
