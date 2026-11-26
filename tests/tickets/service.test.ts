@@ -308,6 +308,23 @@ describe("ticket service (PGlite)", () => {
       const [row] = await db.select().from(tickets).where(eq(tickets.id, t.id));
       expect(row.version).toBe(c.version);
     });
+    test("R24: 제출되지 않은 티켓(초안·검토 중·철회)은 중복 원본이 될 수 없고 구독도 옮겨지지 않는다", async () => {
+      const t = await submitted(w.req, { kind: "group", groupId: w.g1.id });
+      const c = await act(t, { type: "claim" }, w.dev1);
+      const draft = await createDraft(db, draftInput(w.project.id, w.req.id));
+      const reviewing = await createDraft(db, draftInput(w.project.id, w.req.id));
+      await db.update(tickets).set({ status: "ai_reviewing" }).where(eq(tickets.id, reviewing.id));
+      const withdrawn = await createDraft(db, draftInput(w.project.id, w.req.id));
+      await db.update(tickets).set({ status: "withdrawn_ai_resolved", withdrawKind: "already_resolved" }).where(eq(tickets.id, withdrawn.id));
+      for (const origin of [draft, reviewing, withdrawn]) {
+        const err = await act(c, { type: "close", reason: "duplicate", duplicateOfId: origin.id }, w.dev1).catch((e) => e);
+        expect(err).toBeInstanceOf(InvalidDuplicateError);
+        const subs = await db.select().from(ticketSubscriptions).where(eq(ticketSubscriptions.ticketId, origin.id));
+        expect(subs.map((x) => x.userId)).toEqual([w.req.id]);
+      }
+      const [row] = await db.select().from(tickets).where(eq(tickets.id, t.id));
+      expect(row.version).toBe(c.version);
+    });
   });
 
   describe("setUrgency", () => {

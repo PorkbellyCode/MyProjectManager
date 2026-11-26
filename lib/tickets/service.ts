@@ -7,6 +7,7 @@ import { emitNotifications } from "@/lib/notifications/emit";
 import { applyAction, TransitionError, type ActorCtx, type TicketAction } from "./state-machine";
 import { validateTarget, type Target } from "./targets";
 import { parseLinkedRefs } from "./linked-refs";
+import { isSubmittedStatus } from "./visibility";
 
 export type Ticket = typeof tickets.$inferSelect;
 
@@ -193,10 +194,12 @@ async function assertDuplicateOrigin(tx: Db, t: Ticket, duplicateOfId: string | 
   if (!duplicateOfId || !UUID_RE.test(duplicateOfId)) throw new InvalidDuplicateError();
   if (duplicateOfId === t.id) throw new InvalidDuplicateError("자기 자신은 중복 대상이 될 수 없어요.");
   const [origin] = await tx
-    .select({ id: tickets.id })
+    .select({ id: tickets.id, status: tickets.status })
     .from(tickets)
     .where(and(eq(tickets.id, duplicateOfId), eq(tickets.projectId, t.projectId)));
   if (!origin) throw new InvalidDuplicateError();
+  // R24: 제출되지 않은 티켓(초안·검토 중·철회)은 원본이 될 수 없다(구독이 옮겨 가면 안 된다).
+  if (!isSubmittedStatus(origin.status)) throw new InvalidDuplicateError("제출된 티켓만 중복 원본이 될 수 있어요.");
 }
 
 /** 중복 종결: 이 티켓의 작성자와 구독자를 원본 티켓의 구독자로 옮긴다(메인 6.7). */

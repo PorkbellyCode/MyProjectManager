@@ -31,6 +31,7 @@ import {
   TicketNotFoundError,
 } from "@/lib/tickets/service";
 import { InvalidLinkedRefError } from "@/lib/tickets/linked-refs";
+import { submittedOnly } from "@/lib/tickets/visibility";
 import { searchTickets, type TicketHit } from "@/lib/tickets/list";
 import { markNotificationsRead } from "@/lib/notifications/queries";
 import { TransitionError, type ActorCtx } from "@/lib/tickets/state-machine";
@@ -237,7 +238,7 @@ export async function closeAction(projectId: string, ticketId: string, input: un
       const [origin] = await db
         .select({ id: tickets.id })
         .from(tickets)
-        .where(and(eq(tickets.projectId, projectId), eq(tickets.number, data.duplicateOfNumber)));
+        .where(and(eq(tickets.projectId, projectId), eq(tickets.number, data.duplicateOfNumber), submittedOnly()));
       if (!origin) throw new ActionInputError(`#${data.duplicateOfNumber} 티켓이 이 프로젝트에 없어요.`);
       duplicateOfId = origin.id;
     }

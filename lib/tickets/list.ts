@@ -8,12 +8,11 @@ import { ForbiddenError } from "@/lib/access";
 import { getActorCtx } from "./service";
 import type { ActorCtx } from "./state-machine";
 import { defaultView, LIST_CAP, viewsFor, type TicketView } from "./views";
+import { submittedOnly, visibleTo } from "./visibility";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-/** 제출 전(작성·검토) 상태. 다른 사람의 이런 티켓은 어떤 목록에도 나오지 않는다. */
-const PRE_SUBMIT: TicketStatus[] = ["draft", "ai_reviewing", "awaiting_requester"];
-const DONE: TicketStatus[] = ["closed", "withdrawn_ai_resolved"];
+const DONE: TicketStatus[] = ["closed"];
 
 export type AiNoteView =
   | { kind: "recommendation"; targetLabel: string; reason: string }
@@ -54,7 +53,10 @@ export type ListInput = {
   status?: readonly TicketStatus[];
 };
 
-/** 뷰 조건(결정 사항). 모든 뷰는 프로젝트 범위 + "다른 사람의 제출 전 티켓 제외"를 함께 건다. */
+/**
+ * 뷰 조건(결정 사항). R24: "내 요청" 말고는 모두 제출된 티켓만 보고(submittedOnly),
+ * listTickets가 모든 뷰·개수에 visibleTo(나)를 한 번 더 건다(다른 사람의 제출 안 된 티켓은 어디에도 없다).
+ */
 function viewWhere(view: TicketView, a: ActorCtx, hasStatusFilter: boolean): SQL | undefined {
   const me = a.userId!;
   switch (view) {
@@ -62,7 +64,7 @@ function viewWhere(view: TicketView, a: ActorCtx, hasStatusFilter: boolean): SQL
       // R1: 대상 사람이 나 또는 담당자가 나. 상태 필터가 없으면 끝난 티켓은 뺀다.
       return and(
         or(eq(tickets.targetUserId, me), eq(tickets.assigneeId, me)),
-        notInArray(tickets.status, PRE_SUBMIT),
+        submittedOnly(),
         hasStatusFilter ? undefined : notInArray(tickets.status, DONE),
       );
     case "group":
@@ -74,7 +76,7 @@ function viewWhere(view: TicketView, a: ActorCtx, hasStatusFilter: boolean): SQL
     case "confirm":
       return and(eq(tickets.status, "resolved"), a.role === "lead" ? undefined : eq(tickets.authorId, me));
     case "all":
-      return notInArray(tickets.status, PRE_SUBMIT);
+      return submittedOnly();
     case "requested":
       return eq(tickets.authorId, me);
   }
@@ -98,6 +100,7 @@ export async function listTickets(db: Db, input: ListInput): Promise<TicketList>
   const filters = (v: TicketView) =>
     and(
       eq(tickets.projectId, input.projectId),
+      visibleTo(actor.userId!),
       viewWhere(v, actor, status.length > 0),
       urgency.length ? inArray(tickets.urgency, urgency) : undefined,
       status.length ? inArray(tickets.status, status) : undefined,
@@ -231,7 +234,7 @@ export async function searchTickets(db: Db, input: { projectId: string; userId: 
   await getActorCtx(db, input.projectId, input.userId);
   const q = input.query.trim().slice(0, 200);
   if (!q) return [];
-  const visible = or(notInArray(tickets.status, PRE_SUBMIT), eq(tickets.authorId, input.userId));
+  const visible = visibleTo(input.userId);
   const cols = { id: tickets.id, number: tickets.number, title: tickets.title, status: tickets.status };
 
   const num = q.match(/^#?(\d{1,9})$/);

@@ -4,7 +4,7 @@ import { addMember, makeProject, signUp } from "../helpers/world";
 import { createAuth } from "@/lib/auth";
 import { ForbiddenError } from "@/lib/access";
 import type { Db } from "@/lib/db";
-import { notifications, ticketEvents } from "@/lib/db/schema";
+import { notifications, ticketEvents, tickets } from "@/lib/db/schema";
 import type { Urgency } from "@/lib/db/schema/tickets";
 import { deleteGroup, setGroupMembers, upsertGroup } from "@/lib/groups/service";
 import { listTickets, searchTickets } from "@/lib/tickets/list";
@@ -67,6 +67,11 @@ describe("ticket list views (PGlite)", () => {
     const closedBase = await act(await submitted(w.req2, "끝난 건", { kind: "group", groupId: w.gFe.id }), { type: "claim" }, w.fe);
     t.closed = await act(closedBase, { type: "close", reason: "wont_do" }, w.lead);
     t.reqDraft = await draft(w.req, "요청자 초안");
+    // R24: 제출되지 않은 채 철회된 티켓과 검토 중인 티켓(req2). req2 본인 말고는 어디에도 보이지 않는다.
+    const wd = await draft(w.req2, "철회된 초안 건");
+    await db.update(tickets).set({ status: "withdrawn_ai_resolved", withdrawKind: "already_resolved" }).where(eq(tickets.id, wd.id));
+    const rv = await draft(w.req2, "검토 중인 초안 건");
+    await db.update(tickets).set({ status: "ai_reviewing" }).where(eq(tickets.id, rv.id));
     t.req2Draft = await draft(w.req2, "다른 사람 초안");
   });
   afterAll(async () => close());
@@ -104,6 +109,21 @@ describe("ticket list views (PGlite)", () => {
     const mine = await titles(w.req, "requested");
     expect(mine).toContain("요청자 초안");
     expect(mine).not.toContain("다른 사람 초안");
+  });
+
+  test("R24: 다른 사람의 철회·검토 중 티켓은 모든 뷰·개수·검색에서 빠지고, 작성자의 내 요청에는 보인다", async () => {
+    for (const u of [w.lead, w.fe, w.req]) {
+      const all = await listTickets(db, { projectId: w.project.id, userId: u.id, view: "all" });
+      expect(all.rows.map((r) => r.title)).not.toContain("철회된 초안 건");
+      expect(all.rows.map((r) => r.title)).not.toContain("검토 중인 초안 건");
+      expect(all.counts.all).toBe(7);
+      for (const v of all.views) expect(await titles(u, v, { status: [] })).not.toContain("철회된 초안 건");
+      expect((await searchTickets(db, { projectId: w.project.id, userId: u.id, query: "초안 건" })).map((h) => h.title)).toEqual([]);
+    }
+    expect(await titles(w.lead, "all", { status: ["closed"] })).toEqual(["끝난 건"]);
+    const mine = await titles(w.req2, "requested");
+    expect(mine).toEqual(expect.arrayContaining(["철회된 초안 건", "검토 중인 초안 건", "다른 사람 초안"]));
+    expect((await searchTickets(db, { projectId: w.project.id, userId: w.req2.id, query: "초안 건" })).map((h) => h.title).sort()).toEqual(["검토 중인 초안 건", "철회된 초안 건"].sort());
   });
 
   test("긴급도·상태 필터, 긴급도 높은 순 정렬, 뷰별 개수", async () => {

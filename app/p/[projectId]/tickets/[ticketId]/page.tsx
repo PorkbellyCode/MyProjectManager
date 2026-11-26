@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { getSessionUser } from "@/lib/auth";
 import { getTicketDetail, type TicketDetail } from "@/lib/tickets/detail";
+import { isSubmittedStatus } from "@/lib/tickets/visibility";
 import { CATEGORY_LABEL, CLOSE_REASON_LABEL, STATUS_LABEL, ticketRef, URGENCY_LABEL, URGENCY_LEVEL, WITHDRAW_LABEL } from "@/lib/tickets/labels";
 import { fadeUpDelay } from "@/lib/motion";
 import { PageFallback } from "@/components/app-shell/page-frame";
@@ -30,7 +31,6 @@ import { LiveAnnouncer } from "@/components/ticket/live-announcer";
 
 export const metadata = { title: "티켓" };
 
-const PRE_SUBMIT = new Set(["draft", "ai_reviewing", "awaiting_requester", "withdrawn_ai_resolved"]);
 
 export default function TicketPage({ params }: PageProps<"/p/[projectId]/tickets/[ticketId]">) {
   return (
@@ -127,7 +127,7 @@ function announcement(d: TicketDetail): string {
 
 function TicketView({ d, traceBase }: { d: TicketDetail; traceBase: string | null }) {
   const t = d.ticket;
-  const submitted = !PRE_SUBMIT.has(t.status);
+  const submitted = isSubmittedStatus(t.status);
   const options = { people: d.people, groups: d.groups };
   const target = describeTarget(t.target, options);
   const assignee = t.assigneeId ? (d.people.find((p) => p.id === t.assigneeId)?.name ?? "알 수 없음") : null;

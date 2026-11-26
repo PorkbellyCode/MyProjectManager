@@ -6,7 +6,8 @@ import { createTestDb } from "../helpers/db";
 import { addMember, makeProject, signUp } from "../helpers/world";
 import { createAuth } from "@/lib/auth";
 import type { Db } from "@/lib/db";
-import { groups, ticketEvents } from "@/lib/db/schema";
+import { groups, ticketEvents, tickets } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 import { getNewTicketContext, getTicketDetail, listTargetOptions } from "@/lib/tickets/detail";
 import { createDraft, getActorCtx, performAction } from "@/lib/tickets/service";
 
@@ -92,5 +93,16 @@ describe("상세 읽기 모델(접근·회수·대상 목록)", () => {
     expect(asDev?.closeReasons).toContain("duplicate");
     expect(asDev?.canProposeWontDo).toBe(true);
     expect(asDev?.canSetUrgency).toBe(false);
+  });
+
+  test("R24: 제출되지 않은 티켓(초안·철회)은 작성자만 본다. lead·다른 멤버에게는 404", async () => {
+    const draft = await createDraft(db, { projectId: w.project.id, authorId: w.req.id, title: "남의 초안", body: "", category: "defect", urgency: "normal" });
+    const withdrawn = await createDraft(db, { projectId: w.project.id, authorId: w.req.id, title: "철회된 건", body: "", category: "defect", urgency: "normal" });
+    await db.update(tickets).set({ status: "withdrawn_ai_resolved", withdrawKind: "joined_duplicate" }).where(eq(tickets.id, withdrawn.id));
+    for (const t of [draft, withdrawn]) {
+      expect(await getTicketDetail(db, { projectId: w.project.id, ticketId: t.id, userId: w.lead.id })).toBeNull();
+      expect(await getTicketDetail(db, { projectId: w.project.id, ticketId: t.id, userId: w.dev.id })).toBeNull();
+      expect(await getTicketDetail(db, { projectId: w.project.id, ticketId: t.id, userId: w.req.id })).not.toBeNull();
+    }
   });
 });

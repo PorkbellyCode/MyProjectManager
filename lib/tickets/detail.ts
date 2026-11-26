@@ -9,6 +9,7 @@ import { availableActions, applyAction, type ActionType, type ActorCtx } from ".
 import { getActorCtx, type Ticket } from "./service";
 import type { Target } from "./targets";
 import { getTimeline, type TimelineItem } from "./timeline";
+import { canSeeTicket, isSubmittedStatus } from "./visibility";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (s: string) => UUID_RE.test(s);
@@ -140,7 +141,6 @@ export type TicketDetail = {
 };
 
 const SUBMITTED_EDITABLE = new Set(["queued", "assigned"]);
-const NOT_SUBMITTED = new Set(["draft", "ai_reviewing", "awaiting_requester", "withdrawn_ai_resolved"]);
 const SUMMARY_WAIT_MS = 3 * 60_000;
 
 /**
@@ -158,7 +158,8 @@ export async function getTicketDetail(
     .select()
     .from(tickets)
     .where(and(eq(tickets.id, input.ticketId), eq(tickets.projectId, input.projectId)));
-  if (!t) return null;
+  // R24: 제출되지 않은 티켓은 작성자만 본다(리드 포함 다른 사람에게는 404).
+  if (!t || !canSeeTicket(t, input.userId)) return null;
 
   const [[p], dir, actor, timeline, [summaryRow], [lastTurn], [resolveEvent]] = await Promise.all([
     db.select().from(projects).where(eq(projects.id, t.projectId)),
@@ -260,7 +261,7 @@ export async function getTicketDetail(
         }
       : null,
     summaryEditable: isAuthor && SUBMITTED_EDITABLE.has(t.status) && !!summaryRow,
-    summaryPending: !summaryRow && t.aiAvailable && !NOT_SUBMITTED.has(t.status) && Date.now() - t.updatedAt.getTime() < SUMMARY_WAIT_MS,
+    summaryPending: !summaryRow && t.aiAvailable && isSubmittedStatus(t.status) && Date.now() - t.updatedAt.getTime() < SUMMARY_WAIT_MS,
     timeline,
     linkedRefs: ((resolveEvent?.to as { linkedRefs?: unknown } | null)?.linkedRefs as string[] | undefined)?.filter((r) => typeof r === "string") ?? [],
     joined,
