@@ -2,6 +2,7 @@ import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import type { Db } from "@/lib/db";
 import { groups, member, projects, ticketEvents, ticketReviewTurns, ticketSummaries, tickets, user, type AiProvider } from "@/lib/db/schema";
 import type { ReviewTurnKind, SummaryOrigin } from "@/lib/db/schema/review";
+import type { CloseReason } from "@/lib/db/schema/tickets";
 import { isMemberRole, type MemberRole } from "@/lib/auth-roles";
 import { getMembership } from "@/lib/access";
 import { availableActions, applyAction, type ActionType, type ActorCtx } from "./state-machine";
@@ -126,6 +127,16 @@ export type TicketDetail = {
   joined: TicketRefView | null;
   /** 이 티켓에 언급된 다른 티켓(중복 후보·근거)의 번호·제목. */
   refs: Record<string, TicketRefView>;
+  /** 처리 담당(개발자·리드) 종결 다이얼로그에 보일 사유. 요청자 회수는 따로(canWithdraw). */
+  closeReasons: CloseReason[];
+  /** "안 하기로 함 제안"(담당자, 직접 안 하기로 함 종결을 못 하는 사람). */
+  canProposeWontDo: boolean;
+  /** 긴급도를 바꿀 수 있는가(R11: 작성자 또는 lead, 끝난 티켓 제외). */
+  canSetUrgency: boolean;
+  /** "중복으로 종결"에 미리 채울 원본 후보(AI 비고 또는 검토 때의 중복 후보). */
+  duplicateCandidate: TicketRefView | null;
+  /** 바로 제출 때 조용한 검토가 남긴 대상 추천(참고용). 대상이 지금도 프로젝트에 있을 때만. */
+  aiRecommendation: { target: Target; reason: string; provider: string | null } | null;
 };
 
 const SUBMITTED_EDITABLE = new Set(["queued", "assigned"]);
@@ -198,6 +209,15 @@ export async function getTicketDetail(
     joined = joinedId ? (refs[joinedId] ?? null) : null;
   }
 
+  const duplicateCandidateId = findDuplicateCandidate(timeline);
+  if (duplicateCandidateId && !refs[duplicateCandidateId] && isUuid(duplicateCandidateId)) {
+    const [r] = await db
+      .select({ id: tickets.id, number: tickets.number, title: tickets.title, status: tickets.status })
+      .from(tickets)
+      .where(and(eq(tickets.projectId, t.projectId), eq(tickets.id, duplicateCandidateId)));
+    if (r) refs[r.id] = r;
+  }
+
   const summaryData = summaryRow?.data as { fillRate?: number } | undefined;
   const isAuthor = t.authorId === input.userId;
   const shape = { ...t };
@@ -245,8 +265,61 @@ export async function getTicketDetail(
     linkedRefs: ((resolveEvent?.to as { linkedRefs?: unknown } | null)?.linkedRefs as string[] | undefined)?.filter((r) => typeof r === "string") ?? [],
     joined,
     refs,
+    closeReasons: STAFF_CLOSE_REASONS.filter((reason) =>
+      canApply(shape, actor, { type: "close", reason, note: "-", duplicateOfId: "00000000-0000-0000-0000-000000000000" }),
+    ),
+    canProposeWontDo:
+      m.role !== "requester" &&
+      !canApply(shape, actor, { type: "close", reason: "wont_do" }) &&
+      ["assigned", "in_progress", "on_hold"].includes(t.status) &&
+      (t.assigneeId === input.userId || (t.status === "assigned" && t.targetUserId === input.userId)),
+    canSetUrgency: (m.role === "lead" || isAuthor) && t.status !== "closed" && t.status !== "withdrawn_ai_resolved",
+    duplicateCandidate: duplicateCandidateId && duplicateCandidateId !== t.id ? (refs[duplicateCandidateId] ?? null) : null,
+    aiRecommendation: findRecommendation(timeline, dir),
   };
 }
+
+const STAFF_CLOSE_REASONS: CloseReason[] = ["resolved_confirmed", "duplicate", "wont_do", "other"];
+
+/** 가장 최근의 중복 후보: AI 비고(조용한 검토) 또는 검토 카드(요청자가 "다른 건"이라 답했어도 후보로 본다). */
+function findDuplicateCandidate(timeline: TimelineItem[]): string | null {
+  for (let i = timeline.length - 1; i >= 0; i--) {
+    const item = timeline[i];
+    if (item.kind === "event" && item.data.type === "ai_note") {
+      const to = item.data.to as { note?: string; candidates?: { ticketId?: string }[] } | null;
+      const id = to?.note === "duplicate_candidates" ? to.candidates?.[0]?.ticketId : undefined;
+      if (id) return id;
+    }
+    if (item.kind === "review_turn" && item.data.kind === "duplicate_candidates") {
+      const payload = item.data.payload as { candidates?: { ticketId?: string }[] } | null;
+      const id = payload?.candidates?.[0]?.ticketId;
+      if (id) return id;
+    }
+  }
+  return null;
+}
+
+/** 조용한 검토의 대상 추천(ai_note). 추천 대상이 지금 프로젝트에 없으면 null. */
+function findRecommendation(
+  timeline: TimelineItem[],
+  dir: { people: PersonOption[]; groups: { id: string }[] },
+): TicketDetail["aiRecommendation"] {
+  const item = timeline.findLast((i) => i.kind === "event" && i.data.type === "ai_note" && (i.data.to as { note?: string } | null)?.note === "target_recommendation");
+  if (!item) return null;
+  const to = item.data.to as { target?: { kind?: string; userId?: string; groupId?: string } | null; reason?: string };
+  const target = to.target;
+  if (!target) return null;
+  if (target.kind === "group" && target.groupId && dir.groups.some((g) => g.id === target.groupId)) {
+    return { target: { kind: "group", groupId: target.groupId }, reason: String(to.reason ?? ""), provider: providerFor(timeline) };
+  }
+  if (target.kind === "user" && target.userId && dir.people.some((p) => p.id === target.userId && p.role !== "requester")) {
+    return { target: { kind: "user", userId: target.userId }, reason: String(to.reason ?? ""), provider: providerFor(timeline) };
+  }
+  return null;
+}
+
+const providerFor = (timeline: TimelineItem[]) =>
+  timeline.findLast((i) => i.kind === "judgment" && i.data.role === "recommender")?.actor.provider ?? null;
 
 function canApply(t: Ticket, actor: ActorCtx, action: Parameters<typeof applyAction>[1]): boolean {
   try {

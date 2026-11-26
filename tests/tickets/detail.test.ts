@@ -6,7 +6,7 @@ import { createTestDb } from "../helpers/db";
 import { addMember, makeProject, signUp } from "../helpers/world";
 import { createAuth } from "@/lib/auth";
 import type { Db } from "@/lib/db";
-import { groups } from "@/lib/db/schema";
+import { groups, ticketEvents } from "@/lib/db/schema";
 import { getNewTicketContext, getTicketDetail, listTargetOptions } from "@/lib/tickets/detail";
 import { createDraft, getActorCtx, performAction } from "@/lib/tickets/service";
 
@@ -64,5 +64,33 @@ describe("상세 읽기 모델(접근·회수·대상 목록)", () => {
     const theirs = await getTicketDetail(db, { projectId: w.project.id, ticketId: w.t.id, userId: w.dev.id });
     expect(theirs?.canWithdraw).toBe(false);
     expect(theirs?.timeline.length).toBeGreaterThan(0);
+  });
+
+  test("처리 패널: 개발자는 '안 하기로 함' 대신 제안, lead는 직접. 중복 후보·AI 추천을 미리 채운다", async () => {
+    const actor = (id: string) => getActorCtx(db, w.project.id, id);
+    const [g] = await db.select().from(groups).limit(1);
+    const origin = await createDraft(db, { projectId: w.project.id, authorId: w.req.id, title: "원본", body: "", category: "defect", urgency: "normal" });
+    await performAction(db, { ticketId: origin.id, expectedVersion: origin.version, action: { type: "submit", target: null }, actor: await actor(w.req.id) });
+    const d = await createDraft(db, { projectId: w.project.id, authorId: w.req.id, title: "같은 증상", body: "", category: "defect", urgency: "normal" });
+    const q = await performAction(db, { ticketId: d.id, expectedVersion: d.version, action: { type: "submit", target: null }, actor: await actor(w.req.id) });
+    await db.insert(ticketEvents).values([
+      { ticketId: d.id, actorKind: "ai", type: "ai_note", to: { note: "duplicate_candidates", candidates: [{ ticketId: origin.id, number: origin.number, title: "원본", reason: "같아요" }] } },
+      { ticketId: d.id, actorKind: "ai", type: "ai_note", to: { note: "target_recommendation", target: { kind: "group", groupId: g.id }, reason: "범위" } },
+    ]);
+    const asLead = await getTicketDetail(db, { projectId: w.project.id, ticketId: d.id, userId: w.lead.id });
+    expect(asLead?.actions).toEqual(expect.arrayContaining(["claim", "assignTarget", "transfer", "close"]));
+    expect(asLead?.closeReasons).toEqual(expect.arrayContaining(["wont_do", "duplicate", "other"]));
+    expect(asLead?.canProposeWontDo).toBe(false);
+    expect(asLead?.canSetUrgency).toBe(true);
+    expect(asLead?.duplicateCandidate).toMatchObject({ id: origin.id, number: origin.number });
+    expect(asLead?.aiRecommendation).toMatchObject({ target: { kind: "group", groupId: g.id }, reason: "범위" });
+
+    await performAction(db, { ticketId: d.id, expectedVersion: q.version, action: { type: "assignTarget", target: { kind: "user", userId: w.dev.id } }, actor: await actor(w.lead.id) });
+    const asDev = await getTicketDetail(db, { projectId: w.project.id, ticketId: d.id, userId: w.dev.id });
+    expect(asDev?.actions).toContain("accept");
+    expect(asDev?.closeReasons).not.toContain("wont_do");
+    expect(asDev?.closeReasons).toContain("duplicate");
+    expect(asDev?.canProposeWontDo).toBe(true);
+    expect(asDev?.canSetUrgency).toBe(false);
   });
 });
