@@ -11,6 +11,13 @@ for (const file of [".env.local", ".env"]) {
 }
 
 async function main() {
+  const { checkSeedTarget } = await import("@/lib/demo/guard");
+  const target = checkSeedTarget(process.env.DATABASE_URL, { SEED_DEMO_CONFIRM: process.env.SEED_DEMO_CONFIRM });
+  console.log(`시드 대상 데이터베이스: ${target.host}`);
+  if (!target.allow) {
+    console.error(target.message);
+    process.exit(1);
+  }
   // 환경 변수를 읽은 뒤에 불러온다(lib/env는 import 시점에 검증한다).
   const [{ db }, { createAuth }, { seedDemo, countSeed }, { runPending }, { handlers }] = await Promise.all([
     import("@/lib/db"),

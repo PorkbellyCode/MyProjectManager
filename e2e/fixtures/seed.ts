@@ -210,6 +210,17 @@ export async function runJobsViaServer(): Promise<void> {
     const res = await fetch(`http://localhost:${E2E_PORT}/api/cron/jobs`, { headers: { authorization: `Bearer ${e2eEnv.CRON_SECRET}` } });
     if (!res.ok) throw new Error(`cron 호출에 실패했어요: ${res.status}`);
     const { processed } = (await res.json()) as { processed: number };
-    if (processed === 0) return;
+    if (processed === 0) break;
+  }
+  // 조용히 포기하지 않는다: 근거용 커밋이 든 성공 스냅샷이 없으면 해소 카드 근거가 사라져 스펙이 엉뚱하게 실패한다.
+  const projectId = await sampleProjectId();
+  const pool = new Pool({ connectionString: E2E_DATABASE_URL, max: 1 });
+  try {
+    const { rows } = await pool.query("select status, error from repo_snapshots where project_id = $1 order by created_at desc limit 1", [projectId]);
+    if (rows[0]?.status !== "ok") {
+      throw new Error(`E2E 준비 실패: 시연 프로젝트의 레포 분석 스냅샷이 성공 상태가 아니에요(${rows[0]?.status ?? "없음"}${rows[0]?.error ? `: ${rows[0].error}` : ""}).`);
+    }
+  } finally {
+    await pool.end();
   }
 }

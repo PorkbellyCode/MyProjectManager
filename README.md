@@ -56,6 +56,12 @@ pnpm dev
 
 ### 시연 데이터와 계정
 
+> **주의**
+> - 시연 계정의 비밀번호(`demo1234`)는 공개돼 있고, 그중 하나는 lead예요. 외부에서 접근할 수 있는 배포에는 넣지 마세요.
+> - 시연 프로젝트는 그 배포의 서버 AI 키(`ANTHROPIC_API_KEY` 등)로 실제 모델을 호출하므로 비용이 들어요.
+> - 다시 실행하면 시드 그룹·도메인 지식·멤버가 시드 값으로 되돌아가요(직접 고친 내용이 사라져요).
+> - 대상이 로컬 DB가 아니면 `SEED_DEMO_CONFIRM=1`을 붙이지 않는 한 시드가 멈춰요. 실행할 때 대상 호스트를 먼저 출력해요.
+
 `pnpm seed:demo`는 "Workwrap 샘플" 프로젝트(샘플 레포 `PorkbellyCode/MyProjectManager-sample-repo`), 그룹 4개(프론트·서버·AI 기능·외주개발사), 인수인계 문서에서 나눈 도메인 지식 6개, 실제 이벤트가 있는 과거 티켓 4개를 만들어요. `MPM_FAKE_AI=1`이면 레포 분석도 바로 돌려요. 비밀번호는 모두 `demo1234`예요.
 
 | 이메일 | 이름 | 역할(그룹) |
@@ -86,7 +92,7 @@ E2E는 로컬 Postgres(`postgres://postgres@127.0.0.1:54329/postgres`, `E2E_PG_A
 - 작업 큐 크론: `vercel.json`은 `/api/cron/jobs`를 하루 한 번 호출해요(Hobby 플랜 제한). 그 사이에는 요청 뒤 한 번 돌리는 것으로 충분하지만, 더 자주 돌리려면 외부 스케줄러에서 `Authorization: Bearer $CRON_SECRET`으로 GET 호출하세요.
 - 파일은 비공개 Blob에 두고 앱 경로(`/api/files/...`)로 권한을 확인한 뒤 내려줘요. Vercel에서는 OIDC로 연결해요.
 - 업로드는 서버리스 본문 한도(4.5MB) 때문에 4MB로 제한해요.
-- 시연 데이터를 운영 DB에 넣으려면 `DATABASE_URL`을 지정해 `pnpm seed:demo`를 실행하세요.
+- 시연 데이터를 원격 DB에 넣으려면 위 주의사항을 확인한 뒤 `SEED_DEMO_CONFIRM=1 pnpm seed:demo`를 실행하세요.
 
 ## 개발 과정
 

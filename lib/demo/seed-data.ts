@@ -68,4 +68,4 @@ export const SEED_TICKET_TITLES = {
 
 export const SEED_PINNED_COMMIT = "a69abef";
 /** 가짜 레포 정보의 전체 SHA(접두 a69abef). 증거 정규화기는 최신 성공 스냅샷의 커밋만 인정한다. */
-export const SEED_PINNED_COMMIT_FULL = "a69abef4d2c81f0b7e35c19a6d0f48e2b9c7a153";
+export const SEED_PINNED_COMMIT_FULL = "a69abef09fc5b810f4faa333c106b3deba2f6c8f";

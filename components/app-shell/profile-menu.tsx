@@ -73,6 +73,13 @@ export function ProfileMenu({
   const [override, setOverride] = useState(accentOverride);
   const [hex, setHex] = useState("");
   const [hexError, setHexError] = useState<string | null>(null);
+  // 서버가 저장된 값을 새로 내려주면 맞춘다. 컴포넌트를 key로 다시 만들면 열려 있던 팝오버가 닫힌다.
+  const [seen, setSeen] = useState({ theme, accentOverride });
+  if (seen.theme !== theme || seen.accentOverride !== accentOverride) {
+    setSeen({ theme, accentOverride });
+    setThemePref(theme);
+    setOverride(accentOverride);
+  }
 
   const effective = (override ?? projectAccent.light).toUpperCase();
   const initial = user.name.trim().slice(0, 1) || "?";

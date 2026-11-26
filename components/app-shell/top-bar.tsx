@@ -134,7 +134,7 @@ export function TopBar({ user, projects, current, unread, theme, accentOverride,
         <div className="ml-auto flex items-center gap-2 sm:ml-0">
           <NotificationBadge initial={unread} />
           <ThemeToggle pref={theme} />
-          <ProfileMenu key={`${theme}:${accentOverride ?? ""}`} user={user} theme={theme} accentOverride={accentOverride} projectAccent={projectAccent} />
+          <ProfileMenu user={user} theme={theme} accentOverride={accentOverride} projectAccent={projectAccent} />
         </div>
       </div>
       <CommandPalette current={current ? { id: current.id, role: current.role } : null} projects={projects} />
