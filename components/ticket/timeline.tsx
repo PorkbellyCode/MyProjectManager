@@ -139,7 +139,7 @@ function eventRow(item: TimelineItem, ctx: Ctx): Row | null {
       return row(`종결했어요 · ${why}`, note ? <Quote>{note}</Quote> : undefined);
     }
     case "reopenClosed":
-      return row("종결된 티켓을 다시 열었어요");
+      return row("종결된 티켓을 다시 열었어요", reason);
     case "urgency_changed":
       return row(`긴급도를 ${URGENCY_LABEL[from.urgency as Urgency] ?? "?"} → ${URGENCY_LABEL[to.urgency as Urgency] ?? "?"}로 바꿨어요`);
     case "summary_edited":

@@ -6,6 +6,7 @@ import type { Category, Urgency } from "@/lib/db/schema";
 import { emitNotifications } from "@/lib/notifications/emit";
 import { applyAction, TransitionError, type ActorCtx, type TicketAction } from "./state-machine";
 import { validateTarget, type Target } from "./targets";
+import { parseLinkedRefs } from "./linked-refs";
 
 export type Ticket = typeof tickets.$inferSelect;
 
@@ -117,7 +118,10 @@ export async function performAction(
   db: Db,
   input: { ticketId: string; expectedVersion: number; action: TicketAction; actor: ActorCtx },
 ): Promise<Ticket> {
-  const { ticketId, expectedVersion, action, actor } = input;
+  const { ticketId, expectedVersion, actor } = input;
+  // 처리 완료에 링크한 참조는 형식을 먼저 검사한다(InvalidLinkedRefError). 이벤트에는 정규화한 값이 남는다.
+  const action: TicketAction =
+    input.action.type === "resolve" ? { ...input.action, linkedRefs: parseLinkedRefs(input.action.linkedRefs) } : input.action;
   return db.transaction(async (tx) => {
     const [cur] = await tx.select().from(tickets).where(eq(tickets.id, ticketId));
     if (!cur) throw new TicketNotFoundError();
@@ -166,8 +170,8 @@ export async function performAction(
 /** 처리 완료에 링크한 PR/커밋(`pr:12`, `commit:abc1234`)은 이벤트에 남겨 요청자 화면이 보여 준다. */
 function linkedRefsOf(action: TicketAction): { linkedRefs?: string[] } {
   if (action.type !== "resolve") return {};
-  const refs = (action.linkedRefs ?? []).map((r) => r.trim()).filter(Boolean);
-  return refs.length ? { linkedRefs: [...new Set(refs)] } : {};
+  const refs = action.linkedRefs ?? [];
+  return refs.length ? { linkedRefs: refs } : {};
 }
 
 function reasonOf(action: TicketAction): string | null {
@@ -176,6 +180,8 @@ function reasonOf(action: TicketAction): string | null {
     case "hold":
     case "reopen":
       return action.reason.trim();
+    case "reopenClosed":
+      return action.reason?.trim() || null;
     case "close":
       return action.note?.trim() || action.reason;
     default:

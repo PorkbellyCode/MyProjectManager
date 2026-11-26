@@ -25,6 +25,7 @@ import {
   subscribe,
 } from "@/lib/tickets/service";
 import { InvalidTargetError } from "@/lib/tickets/targets";
+import { InvalidLinkedRefError } from "@/lib/tickets/linked-refs";
 import { TransitionError, type ActorCtx, type TicketAction } from "@/lib/tickets/state-machine";
 import { deleteGroup, setGroupMembers, upsertGroup } from "@/lib/groups/service";
 
@@ -238,6 +239,20 @@ describe("ticket service (PGlite)", () => {
       const q2 = await act(d, { type: "submit", target: null }, w.lead);
       expect(await notifiedUsers(q2.id)).toEqual([w.lead2.id]);
     });
+    test("resolve: 형식이 틀린 linkedRefs는 InvalidLinkedRefError로 거부하고 티켓은 그대로다, SHA는 소문자로", async () => {
+      const t = await submitted(w.req, { kind: "group", groupId: w.g1.id });
+      const c = await act(t, { type: "claim" }, w.dev1);
+      for (const bad of [["pr:abc"], ["commit:xyz1234"], ["javascript:alert(1)"], ["ticket:../../admin"], Array.from({ length: 11 }, (_, i) => `pr:${i + 1}`)]) {
+        await expect(act(c, { type: "resolve", linkedRefs: bad }, w.dev1)).rejects.toBeInstanceOf(InvalidLinkedRefError);
+      }
+      const [still] = await db.select().from(tickets).where(eq(tickets.id, t.id));
+      expect(still.status).toBe("in_progress");
+      expect(still.version).toBe(c.version);
+      await act(c, { type: "resolve", linkedRefs: ["commit:ABCDEF1", "pr:007"] }, w.dev1);
+      const [ev] = await db.select().from(ticketEvents).where(and(eq(ticketEvents.ticketId, t.id), eq(ticketEvents.type, "resolve")));
+      expect(ev.to).toMatchObject({ linkedRefs: ["commit:abcdef1", "pr:7"] });
+    });
+
     test("accept/claim/hold/resume → 작성자, resolve → 작성자+구독자, reopen → 담당자, close → 작성자+담당자+구독자", async () => {
       const t = await submitted(w.req, { kind: "group", groupId: w.g1.id });
       await subscribe(db, t.id, w.lead2.id);
