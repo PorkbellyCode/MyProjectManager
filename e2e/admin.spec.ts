@@ -118,11 +118,22 @@ test("④ 이메일로 초대하면 다른 브라우저로 가입해 요청자�
 
   await page.reload();
   const role = page.getByLabel("신입요청 역할");
+  // 서버 HTML만으로도 값은 맞으므로, 핸들러가 붙은(하이드레이션 끝난) 뒤에 고른다.
+  await expect(role).toHaveAttribute("data-hydrated", "true");
   await expect(role).toHaveValue("requester");
   await role.selectOption("developer");
   await expect(page.getByText("역할을 바꿨어요.")).toBeVisible({ timeout: 15_000 });
   await expect(role).toHaveValue("developer");
   await page.reload();
+  await expect(page.getByLabel("신입요청 역할")).toHaveValue("developer");
+
+  // 플러그인의 조직 변경 엔드포인트는 막혀 있다(R26): 리드 세션으로도 404이고 역할은 그대로다.
+  const blocked = await page.request.post("/api/auth/organization/update-member-role", {
+    data: { organizationId: "x", memberId: "x", role: "requester" },
+  });
+  expect(blocked.status()).toBe(404);
+  const leave = await page.request.post("/api/auth/organization/leave", { data: { organizationId: "x" } });
+  expect(leave.status()).toBe(404);
   await expect(page.getByLabel("신입요청 역할")).toHaveValue("developer");
   await shot(page, "task-16-admin-settings.png");
 });

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Copy, Loader2, UserPlus } from "lucide-react";
@@ -19,6 +20,8 @@ import type { AdminInvitation, AdminMember } from "@/lib/projects/admin";
 import type { MemberRole } from "@/lib/auth-roles";
 import { z } from "zod";
 
+const subscribeNothing = () => () => {};
+
 export const ROLE_LABEL: Record<MemberRole, string> = { requester: "요청자", developer: "개발자", lead: "리드" };
 const ROLES: MemberRole[] = ["requester", "developer", "lead"];
 
@@ -27,6 +30,10 @@ export const selectClass =
 
 function MemberRow({ projectId, m }: { projectId: string; m: AdminMember }) {
   const { execute, pending, error } = useTicketAction();
+  // 고른 값은 액션이 도는 동안 그대로 보여주고, 실패했을 때만 서버 값으로 되돌린다.
+  const [value, setValue] = useState<MemberRole>(m.role);
+  // 하이드레이션이 끝나 핸들러가 붙었다는 표시(테스트가 기다린다).
+  const hydrated = useSyncExternalStore(subscribeNothing, () => true, () => false);
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3" data-member={m.email}>
       <div className="min-w-0 flex-1">
@@ -40,9 +47,18 @@ function MemberRow({ projectId, m }: { projectId: string; m: AdminMember }) {
       </div>
       <select
         aria-label={`${m.name} 역할`}
-        value={m.role}
+        value={value}
         disabled={pending}
-        onChange={(e) => void execute(() => changeMemberRoleAction(projectId, { userId: m.userId, role: e.target.value }), { success: "역할을 바꿨어요." })}
+        data-hydrated={hydrated || undefined}
+        onChange={(e) => {
+          const next = e.target.value as MemberRole;
+          setValue(next);
+          void execute(() => changeMemberRoleAction(projectId, { userId: m.userId, role: next }), { success: "역할을 바꿨어요." }).then(
+            (ok) => {
+              if (!ok) setValue(m.role);
+            },
+          );
+        }}
         className={selectClass}
       >
         {ROLES.map((r) => (
@@ -88,7 +104,7 @@ export function MembersSection({ projectId, members, invitations }: { projectId:
       </h2>
       <ul aria-label="멤버 목록" className="divide-y divide-line rounded-[14px] border border-line bg-surface">
         {members.map((m) => (
-          <MemberRow key={m.userId} projectId={projectId} m={m} />
+          <MemberRow key={`${m.userId}:${m.role}`} projectId={projectId} m={m} />
         ))}
       </ul>
 
