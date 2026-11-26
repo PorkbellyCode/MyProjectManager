@@ -11,7 +11,10 @@
     "lint": "eslint",
     "test": "vitest run",
     "db:generate": "drizzle-kit generate",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "drizzle-kit migrate",
+    "seed:demo": "tsx scripts/seed-demo.ts",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.108",

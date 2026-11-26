@@ -1,8 +1,9 @@
 import { and, asc, desc, eq, inArray, ne } from "drizzle-orm";
 import type { Db } from "@/lib/db";
-import { groups, tickets } from "@/lib/db/schema";
+import { groups, projects, tickets } from "@/lib/db/schema";
 import type { TicketStatus } from "@/lib/db/schema/tickets";
 import type { FakeCallContext } from "./fake";
+import { SEED_REPO_RULE, SEED_RULES } from "./fake-seed-rules";
 
 /**
  * MPM_FAKE_AI=1일 때의 결정적 응답 규칙(R3). 실제 모델 대신 시스템 지시의 "# 이번 작업" 줄로 역할을 알아내고,
@@ -10,7 +11,7 @@ import type { FakeCallContext } from "./fake";
  * 근거·후보는 DB에 실제로 있는 id만 쓴다(정규화기가 없는 id를 지우면 카드가 뜨지 않는다).
  *
  * 규칙은 표(`FAKE_RULES`)로 둔다. 위에서부터 처음 맞는 규칙이 답한다.
- * 시드 전용 규칙(Task 17: "이어가기", "버전"+"비어" 등)은 `registerFakeRules`로 표 앞에 끼워 넣는다.
+ * 시드 전용 규칙(Task 17, `fake-seed-rules.ts`)은 시드 프로젝트에서만 맞아 일반 규칙 앞에 놓인다. 그 밖의 규칙은 `registerFakeRules`로 앞에 끼워 넣는다.
  */
 
 export type FakeTask = "dedup" | "resolve" | "interview" | "recommend" | "summarize" | "repo" | "unknown";
@@ -34,6 +35,8 @@ export type FakeHelpers = {
   projectId(): Promise<string | null>;
   /** 이 프로젝트에서 제출된(초안·검토 중·철회가 아닌) 티켓, 최근 것부터. 자기 자신은 뺀다. */
   submittedTickets(): Promise<{ id: string; number: number; title: string }[]>;
+  /** 검토 중인 티켓의 프로젝트(주소, 데모 여부). */
+  project(): Promise<{ id: string; repoUrl: string; isDemo: boolean } | null>;
   /** 이 프로젝트의 그룹, 이름순. */
   groups(): Promise<{ id: string; name: string }[]>;
   sleep(ms: number): Promise<void>;
@@ -344,6 +347,12 @@ export function createHelpers(db: Db, input: FakeInput): FakeHelpers {
   return {
     db,
     projectId: getProjectId,
+    async project() {
+      const pid = await getProjectId();
+      if (!pid) return null;
+      const [p] = await db.select({ id: projects.id, repoUrl: projects.repoUrl, isDemo: projects.isDemo }).from(projects).where(eq(projects.id, pid));
+      return p ?? null;
+    },
     async submittedTickets() {
       const pid = await getProjectId();
       if (!pid) return [];
@@ -369,7 +378,7 @@ export function createHelpers(db: Db, input: FakeInput): FakeHelpers {
 }
 
 /** 표를 위에서부터 훑어 처음 맞는 규칙의 답을 돌려준다. 맞는 규칙이 없으면 빈 객체. */
-export async function respondWithRules(ctx: FakeCallContext, db: Db, rules: FakeRule[] = [...extraRules, ...GENERIC_RULES]): Promise<unknown> {
+export async function respondWithRules(ctx: FakeCallContext, db: Db, rules: FakeRule[] = [...extraRules, ...SEED_RULES, SEED_REPO_RULE, ...GENERIC_RULES]): Promise<unknown> {
   const input = toFakeInput(ctx);
   const h = createHelpers(db, input);
   for (const rule of rules) {

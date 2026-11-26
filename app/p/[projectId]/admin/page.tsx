@@ -50,7 +50,7 @@ async function Admin({
 
   const raw = (await searchParams).tab;
   const tab: Tab = TABS.find((t) => t.key === raw)?.key ?? "domain";
-  const data = await getAdminData(db, projectId, user.id);
+  const data = await getAdminData(db, projectId);
   if (!data) notFound();
 
   return (

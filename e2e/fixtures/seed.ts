@@ -12,8 +12,10 @@ import { ticketEvents, ticketSummaries } from "@/lib/db/schema";
 import type { Target } from "@/lib/tickets/targets";
 import type { Urgency } from "@/lib/db/schema/tickets";
 import { createDraft, getActorCtx, performAction } from "@/lib/tickets/service";
+import { seedDemo } from "@/lib/demo/seed";
+import { DEMO_PROJECT_NAME, DEMO_REPO_URL } from "@/lib/demo/seed-data";
 import { addMember, makeProject, signUp } from "../../tests/helpers/world";
-import { E2E_DATABASE_URL, E2E_DB_NAME, PG_ADMIN_URL } from "./env";
+import { E2E_DATABASE_URL, E2E_DB_NAME, E2E_PORT, PG_ADMIN_URL, e2eEnv } from "./env";
 
 export const SEED_FILE = path.resolve(__dirname, "../.seed.json");
 export const PASSWORD = "password-1234";
@@ -171,5 +173,43 @@ export async function seedTicket(input: {
     return { id: d.id, number: d.number, title: d.title };
   } finally {
     await pool.end();
+  }
+}
+
+/**
+ * 시연 시드(`pnpm seed:demo`와 같은 seedDemo)를 E2E 데이터베이스에 얹는다. 데모 흐름 스펙(e2e/demo-flow.spec.ts)이 쓴다.
+ * 샘플 레포 분석 작업(repo.analyze)은 앱 서버의 크론 경로로 돌린다(가짜 AI 규칙은 서버 안에서 실행된다).
+ */
+export async function seedSampleDemo(): Promise<{ projectId: string }> {
+  const pool = new Pool({ connectionString: E2E_DATABASE_URL, max: 4 });
+  const db = drizzle(pool, { schema }) as unknown as Db;
+  try {
+    const handoverMarkdown = fs.readFileSync(path.resolve(__dirname, "../../docs/demo/workwrap-handover.md"), "utf8");
+    const { projectId } = await seedDemo(db, createAuth(db), { handoverMarkdown });
+    return { projectId };
+  } finally {
+    await pool.end();
+  }
+}
+
+/** 시연 시드 프로젝트의 id. */
+export async function sampleProjectId(): Promise<string> {
+  const pool = new Pool({ connectionString: E2E_DATABASE_URL, max: 1 });
+  try {
+    const { rows } = await pool.query("select id from projects where name = $1 and repo_url = $2", [DEMO_PROJECT_NAME, DEMO_REPO_URL]);
+    if (!rows[0]) throw new Error("시연 시드 프로젝트가 없어요");
+    return rows[0].id as string;
+  } finally {
+    await pool.end();
+  }
+}
+
+/** 대기 중인 작업(샘플 레포 분석)을 앱 서버의 크론 경로로 다 돌린다. */
+export async function runJobsViaServer(): Promise<void> {
+  for (let i = 0; i < 10; i++) {
+    const res = await fetch(`http://localhost:${E2E_PORT}/api/cron/jobs`, { headers: { authorization: `Bearer ${e2eEnv.CRON_SECRET}` } });
+    if (!res.ok) throw new Error(`cron 호출에 실패했어요: ${res.status}`);
+    const { processed } = (await res.json()) as { processed: number };
+    if (processed === 0) return;
   }
 }

@@ -87,6 +87,9 @@ function AgentCard({ projectId, agent }: { projectId: string; agent: AdminAgent 
 }
 
 export function AgentsPanel({ projectId, agents }: { projectId: string; agents: AdminAgent[] }) {
+  if (agents.length === 0) {
+    return <p className="rounded-[14px] border border-line bg-surface p-6 text-sm text-muted-text">아직 에이전트 설정이 없어요.</p>;
+  }
   return (
     <div className="flex flex-col gap-6">
       {agents.map((a) => (

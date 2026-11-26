@@ -12,7 +12,7 @@ import {
   type AiProvider,
 } from "@/lib/db/schema";
 import { isMemberRole, type MemberRole } from "@/lib/auth-roles";
-import { AGENT_ROLES, ensureDefaultProfiles, getActiveProfile, listProfileVersions, type AgentProfile, type AgentRole, type ProfileVersionRow } from "@/lib/agents/profiles";
+import { AGENT_ROLES, getActiveProfile, listProfileVersions, type AgentProfile, type AgentRole, type ProfileVersionRow } from "@/lib/agents/profiles";
 import { getLatestSnapshot, type RepoSnapshot } from "@/lib/agents/repo-analyst";
 
 export type ProjectSummary = {
@@ -81,11 +81,10 @@ export type AdminData = {
 };
 
 /** 관리자 화면에 필요한 값 전부. 호출하는 쪽이 lead인지 확인한다. */
-export async function getAdminData(db: Db, projectId: string, editorId: string): Promise<AdminData | null> {
+export async function getAdminData(db: Db, projectId: string): Promise<AdminData | null> {
   const project = await getProjectSummary(db, projectId);
   if (!project) return null;
-  // 시드나 이전 방식으로 만든 프로젝트에 프로필이 없으면 기본값으로 채운다(있는 역할은 건드리지 않는다).
-  await ensureDefaultProfiles(db, projectId, editorId);
+  // 렌더 중에는 쓰지 않는다. 기본 프로필은 프로젝트를 만들 때(createProject)와 시드가 채운다.
   const [p] = await db.select({ organizationId: projects.organizationId }).from(projects).where(eq(projects.id, projectId));
   const [memberRows, inviteRows, groupRows, gmRows, docRows, agents] = await Promise.all([
     db
@@ -106,13 +105,14 @@ export async function getAdminData(db: Db, projectId: string, editorId: string):
       .innerJoin(groups, eq(groups.id, groupMembers.groupId))
       .where(eq(groups.projectId, projectId)),
     db.select().from(domainDocs).where(eq(domainDocs.projectId, projectId)).orderBy(asc(domainDocs.title)),
+    // 프로필이 없는 역할은 건너뛴다(빈 상태로 보인다). 화면을 그리며 만들지는 않는다.
     Promise.all(
-      AGENT_ROLES.map(async (role): Promise<AdminAgent> => ({
-        role,
-        active: await getActiveProfile(db, projectId, role),
-        versions: await listProfileVersions(db, projectId, role),
-      })),
-    ),
+      AGENT_ROLES.map(async (role): Promise<AdminAgent | null> => {
+        const versions = await listProfileVersions(db, projectId, role);
+        if (versions.length === 0) return null;
+        return { role, active: await getActiveProfile(db, projectId, role), versions };
+      }),
+    ).then((list) => list.filter((a): a is AdminAgent => a !== null)),
   ]);
   return {
     project,

@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 import type { Db } from "@/lib/db";
 import { projects } from "@/lib/db/schema";
 import { decrypt } from "@/lib/crypto";
+import { SEED_PINNED_COMMIT_FULL } from "@/lib/demo/seed-data";
 import { env } from "@/lib/env";
 import { createGitHubSource } from "./sources/github";
 
@@ -48,7 +49,15 @@ export function createFakeRepoSource(repoUrl: string): RepoSource {
       paths: ["app/summary/page.tsx", "app/api/summary/route.ts", "lib/summary/build.ts", "package.json"],
       manifests: { "package.json": '{"dependencies":{"next":"16","react":"19"}}' },
       readme: "# 예시 레포",
-      commits: [],
+      // 시연 시드의 해소 근거(커밋 a69abef)가 근거 정규화를 통과하도록 최신 성공 스냅샷에 이 커밋을 둔다.
+      commits: [
+        {
+          sha: SEED_PINNED_COMMIT_FULL,
+          message: "메모 '이어가기'를 '고정하기'(pinned)로 변경",
+          date: "2026-11-20T00:00:00.000Z",
+          url: `${repoUrl.replace(/\/$/, "")}/commit/${SEED_PINNED_COMMIT_FULL}`,
+        },
+      ],
       pulls: [],
       truncated: false,
     }),
