@@ -229,6 +229,18 @@ function interviewQuestions(input: FakeInput) {
   ];
 }
 
+/** 레포 분석(repo.analyze)의 고정 개요. 그룹 태그는 모두 비워 둔다(리드가 화면에서 단다). */
+export const FAKE_REPO_OVERVIEW = {
+  stack: ["Next.js", "React", "TypeScript"],
+  modules: [
+    { path: "lib/summary", summary: "하루 요약을 만드는 로직", groupId: null },
+    { path: "app/api/summary", summary: "요약 API", groupId: null },
+  ],
+  screens: [{ path: "app/summary/page.tsx", name: "오늘 요약", groupId: null }],
+  apis: [{ path: "app/api/summary/route.ts", method: "GET", groupId: null }],
+  domains: [{ name: "하루 요약", modulePaths: ["lib/summary", "app/api/summary"] }],
+};
+
 export const GENERIC_RULES: FakeRule[] = [
   {
     name: "느린 검토(본문에 '천천히')",
@@ -285,6 +297,11 @@ export const GENERIC_RULES: FakeRule[] = [
         evidence: [],
       };
     },
+  },
+  {
+    name: "레포 분석(고정 개요)",
+    task: "repo",
+    respond: () => FAKE_REPO_OVERVIEW,
   },
   {
     name: "정리본(고정 요약)",

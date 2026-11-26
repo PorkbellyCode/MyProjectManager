@@ -13,7 +13,8 @@ import { ensureDefaultProfiles } from "@/lib/agents/profiles";
 import { DEFAULT_REQUIRED_FIELDS, interviewSystem } from "@/lib/agents/interview";
 import { setFakeResponder } from "@/lib/ai/fake";
 import { answeredValues, interviewFields, registerFakeRules, respondWithRules, toFakeInput } from "@/lib/ai/fake-rules";
-import { runPending } from "@/lib/jobs/queue";
+import { enqueue, runPending } from "@/lib/jobs/queue";
+import { getLatestSnapshot } from "@/lib/agents/repo-analyst";
 import { handlers } from "@/lib/jobs/handlers";
 import { answerQuestions, requestReview, submitTicket } from "@/lib/review/pipeline";
 import { renderAnswered } from "@/lib/review/records";
@@ -168,5 +169,14 @@ describe("가짜 AI 규칙 표(MPM_FAKE_AI=1, R3)", () => {
     expect(values.get("environment")).toBe("PC 웹");
     expect(values.get("screenshot")).toBe("(첨부만)");
     expect(values.get("frequency")).toBe("알 수 없음");
+  });
+
+  test("레포 분석: 네트워크 없이 고정 개요로 ok 스냅샷을 남긴다", async () => {
+    useRules();
+    await enqueue(db, "repo.analyze", { projectId: w.project.id });
+    await drain();
+    const snap = await getLatestSnapshot(db, w.project.id, { status: "ok" });
+    expect(snap?.overview?.stack).toContain("Next.js");
+    expect(snap?.overview?.screens[0].name).toBe("오늘 요약");
   });
 });

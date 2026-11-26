@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Check, LogOut, Monitor, Moon, RotateCcw, Sun } from "lucide-react";
+import { Check, LogOut, Monitor, Moon, Plus, RotateCcw, Sun } from "lucide-react";
 import { toast } from "sonner";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
@@ -244,6 +244,13 @@ export function ProfileMenu({
         </section>
 
         <div className="p-2">
+          <a
+            href="/projects/new"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-text transition-colors hover:bg-sunken hover:text-text"
+          >
+            <Plus className="size-4" aria-hidden="true" />
+            새 프로젝트 만들기
+          </a>
           <button
             type="button"
             onClick={signOut}
