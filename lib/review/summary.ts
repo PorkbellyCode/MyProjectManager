@@ -1,5 +1,6 @@
 import { eq, sql } from "drizzle-orm";
 import type { Db } from "@/lib/db";
+import { isSubmittedStatus } from "@/lib/tickets/visibility";
 import { ticketEvents, ticketSummaries, tickets } from "@/lib/db/schema";
 import { ForbiddenError } from "@/lib/access";
 import { getActiveProfile } from "@/lib/agents/profiles";
@@ -26,7 +27,6 @@ export class SummaryNotEditableError extends Error {
 }
 
 /** 제출 전 상태나 철회된 티켓은 정리하지 않는다. */
-const NOT_SUBMITTED = new Set(["draft", "ai_reviewing", "awaiting_requester", "withdrawn_ai_resolved"]);
 
 /**
  * 제출된 티켓의 정리본을 만든다(요청자 원문 + 인터뷰 답변). 인터뷰 기록이 있으면 `interview`, 없으면 `original_only`.
@@ -37,7 +37,7 @@ const NOT_SUBMITTED = new Set(["draft", "ai_reviewing", "awaiting_requester", "w
  */
 export async function summarizeTicket(db: Db, ticketId: string, deps: ReviewDeps = {}): Promise<void> {
   const [t] = await db.select().from(tickets).where(eq(tickets.id, ticketId));
-  if (!t || NOT_SUBMITTED.has(t.status)) return;
+  if (!t || !isSubmittedStatus(t.status)) return;
   const [existing] = await db.select().from(ticketSummaries).where(eq(ticketSummaries.ticketId, ticketId));
   if (existing?.editedAt) return;
 

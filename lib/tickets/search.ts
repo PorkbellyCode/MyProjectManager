@@ -1,5 +1,6 @@
-import { and, eq, ne, notInArray, sql } from "drizzle-orm";
+import { and, eq, ne, sql } from "drizzle-orm";
 import type { Db } from "@/lib/db";
+import { submittedOnly } from "./visibility";
 import { tickets, user } from "@/lib/db/schema";
 import type { CloseReason, TicketStatus } from "@/lib/db/schema/tickets";
 
@@ -16,7 +17,7 @@ export type SimilarTicket = {
   rank: number;
 };
 
-/** 같은 프로젝트의 제출된 티켓(초안·AI 해소로 철회된 티켓 제외)을 전문 검색으로 찾는다. */
+/** 같은 프로젝트의 제출된 티켓(R24: 초안·검토 중·제출 없이 철회된 티켓 제외)을 전문 검색으로 찾는다. */
 export async function searchSimilarTickets(
   db: Db,
   projectId: string,
@@ -43,7 +44,7 @@ export async function searchSimilarTickets(
     .where(
       and(
         eq(tickets.projectId, projectId),
-        notInArray(tickets.status, ["draft", "withdrawn_ai_resolved"]),
+        submittedOnly(),
         sql`${tickets.searchVector} @@ ${tsq}`,
         excludeId ? ne(tickets.id, excludeId) : undefined,
       ),

@@ -1,5 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import type { Db } from "@/lib/db";
+import { isSubmittedStatus } from "@/lib/tickets/visibility";
 import { aiJudgments, ticketEvents, tickets } from "@/lib/db/schema";
 import type { ReviewStage } from "@/lib/db/schema/tickets";
 import { getActiveProfile, type AgentProfile, type AgentRole } from "@/lib/agents/profiles";
@@ -14,7 +15,6 @@ import {
 import { summarizeTicket } from "@/lib/review/summary";
 import type { Ticket } from "@/lib/tickets/service";
 
-const NOT_SUBMITTED = new Set(["draft", "ai_reviewing", "awaiting_requester", "withdrawn_ai_resolved"]);
 
 const note = (ticketId: string, to: Record<string, unknown>, reason: string) => ({
   ticketId,
@@ -33,7 +33,7 @@ const note = (ticketId: string, to: Record<string, unknown>, reason: string) => 
  */
 export async function runSilentReview(db: Db, ticketId: string, deps: ReviewDeps = {}): Promise<void> {
   const [t] = await db.select().from(tickets).where(eq(tickets.id, ticketId));
-  if (!t || NOT_SUBMITTED.has(t.status)) return;
+  if (!t || !isSubmittedStatus(t.status)) return;
   const [done] = await db
     .select({ id: aiJudgments.id })
     .from(aiJudgments)

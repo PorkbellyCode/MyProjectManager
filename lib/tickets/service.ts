@@ -6,6 +6,8 @@ import type { Category, Urgency } from "@/lib/db/schema";
 import { emitNotifications } from "@/lib/notifications/emit";
 import { applyAction, TransitionError, type ActorCtx, type TicketAction } from "./state-machine";
 import { validateTarget, type Target } from "./targets";
+import { parseLinkedRefs } from "./linked-refs";
+import { isSubmittedStatus } from "./visibility";
 
 export type Ticket = typeof tickets.$inferSelect;
 
@@ -117,7 +119,10 @@ export async function performAction(
   db: Db,
   input: { ticketId: string; expectedVersion: number; action: TicketAction; actor: ActorCtx },
 ): Promise<Ticket> {
-  const { ticketId, expectedVersion, action, actor } = input;
+  const { ticketId, expectedVersion, actor } = input;
+  // 처리 완료에 링크한 참조는 형식을 먼저 검사한다(InvalidLinkedRefError). 이벤트에는 정규화한 값이 남는다.
+  const action: TicketAction =
+    input.action.type === "resolve" ? { ...input.action, linkedRefs: parseLinkedRefs(input.action.linkedRefs) } : input.action;
   return db.transaction(async (tx) => {
     const [cur] = await tx.select().from(tickets).where(eq(tickets.id, ticketId));
     if (!cur) throw new TicketNotFoundError();
@@ -150,7 +155,7 @@ export async function performAction(
         actorKind: actor.role === "system" ? "system" : "user",
         type: action.type,
         from: pick(cur, keys),
-        to: pick(updated, keys),
+        to: { ...pick(updated, keys), ...linkedRefsOf(action) },
         reason: reasonOf(action),
       })
       .returning();
@@ -163,12 +168,21 @@ export async function performAction(
   });
 }
 
+/** 처리 완료에 링크한 PR/커밋(`pr:12`, `commit:abc1234`)은 이벤트에 남겨 요청자 화면이 보여 준다. */
+function linkedRefsOf(action: TicketAction): { linkedRefs?: string[] } {
+  if (action.type !== "resolve") return {};
+  const refs = action.linkedRefs ?? [];
+  return refs.length ? { linkedRefs: refs } : {};
+}
+
 function reasonOf(action: TicketAction): string | null {
   switch (action.type) {
     case "transfer":
     case "hold":
     case "reopen":
       return action.reason.trim();
+    case "reopenClosed":
+      return action.reason?.trim() || null;
     case "close":
       return action.note?.trim() || action.reason;
     default:
@@ -180,10 +194,12 @@ async function assertDuplicateOrigin(tx: Db, t: Ticket, duplicateOfId: string | 
   if (!duplicateOfId || !UUID_RE.test(duplicateOfId)) throw new InvalidDuplicateError();
   if (duplicateOfId === t.id) throw new InvalidDuplicateError("자기 자신은 중복 대상이 될 수 없어요.");
   const [origin] = await tx
-    .select({ id: tickets.id })
+    .select({ id: tickets.id, status: tickets.status })
     .from(tickets)
     .where(and(eq(tickets.id, duplicateOfId), eq(tickets.projectId, t.projectId)));
   if (!origin) throw new InvalidDuplicateError();
+  // R24: 제출되지 않은 티켓(초안·검토 중·철회)은 원본이 될 수 없다(구독이 옮겨 가면 안 된다).
+  if (!isSubmittedStatus(origin.status)) throw new InvalidDuplicateError("제출된 티켓만 중복 원본이 될 수 있어요.");
 }
 
 /** 중복 종결: 이 티켓의 작성자와 구독자를 원본 티켓의 구독자로 옮긴다(메인 6.7). */

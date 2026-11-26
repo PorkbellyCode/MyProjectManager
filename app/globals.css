@@ -1,27 +1,315 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* 테마는 html(또는 셸 래퍼)의 data-theme="light|dark"로 정한다. */
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
+/*
+ * 디자인 토큰 (docs/design/design-rules.md 3.2).
+ * 중립색은 :root / [data-theme] 에서, 강조색·AI 표시색은 아래 `.accent-scope`에서
+ * 라이트·다크 값(--accent-l/-d 등)을 골라 --brand 등으로 내보낸다.
+ */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --bg: #fafaf9;
+  --surface: #ffffff;
+  --sunken: #f4f3f1;
+  --text: #1c1917;
+  --muted: #57534e;
+  --faint: #736c66;
+  --border: #e7e5e4;
+  --danger: #b91c1c;
+}
+
+[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f0e0d;
+  --surface: #171615;
+  --sunken: #201e1c;
+  --text: #f5f5f4;
+  --muted: #c9c4bf;
+  --faint: #a39e98;
+  --border: #2f2c29;
+  --danger: #f87171;
+}
+
+/* 기본 강조색 = Claude. 셸이 프로젝트·사용자 설정에 맞춰 --accent-*, --ai-* 를 덮어쓴다. */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --accent-l: #c2410c;
+  --accent-d: #ef7d3c;
+  --on-accent-l: #ffffff;
+  --on-accent-d: #140b05;
+  --ai-tint-l: #fbefe9;
+  --ai-tint-d: #2a1b15;
+  --ai-ring-l: #f1cdbd;
+  --ai-ring-d: #5a3324;
+  --ai-text-l: #97401f;
+  --ai-text-d: #f2a98a;
+}
+
+:root,
+[data-theme="light"],
+.accent-scope,
+.accent-scope[data-theme="light"] {
+  --brand: var(--accent-l);
+  --on-brand: var(--on-accent-l);
+  --ai-tint: var(--ai-tint-l);
+  --ai-ring: var(--ai-ring-l);
+  --ai-text: var(--ai-text-l);
+}
+
+[data-theme="dark"],
+[data-theme="dark"] .accent-scope,
+.accent-scope[data-theme="dark"] {
+  --brand: var(--accent-d);
+  --on-brand: var(--on-accent-d);
+  --ai-tint: var(--ai-tint-d);
+  --ai-ring: var(--ai-ring-d);
+  --ai-text: var(--ai-text-d);
+}
+
+.accent-scope[data-theme="light"] {
+  --brand: var(--accent-l);
+  --on-brand: var(--on-accent-l);
+  --ai-tint: var(--ai-tint-l);
+  --ai-ring: var(--ai-ring-l);
+  --ai-text: var(--ai-text-l);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-plex), "IBM Plex Sans KR", system-ui, sans-serif;
+  --font-mono: var(--font-jb), "JetBrains Mono", ui-monospace, monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-sunken: var(--sunken);
+  --color-text: var(--text);
+  --color-muted-text: var(--muted);
+  --color-faint: var(--faint);
+  --color-line: var(--border);
+  --color-brand: var(--brand);
+  --color-on-brand: var(--on-brand);
+  --color-ai-tint: var(--ai-tint);
+  --color-ai-ring: var(--ai-ring);
+  --color-ai-text: var(--ai-text);
+
+  /* shadcn 컴포넌트가 쓰는 이름을 우리 토큰에 연결한다. */
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --color-card: var(--surface);
+  --color-card-foreground: var(--text);
+  --color-popover: var(--surface);
+  --color-popover-foreground: var(--text);
+  --color-primary: var(--brand);
+  --color-primary-foreground: var(--on-brand);
+  --color-secondary: var(--sunken);
+  --color-secondary-foreground: var(--text);
+  --color-muted: var(--sunken);
+  --color-muted-foreground: var(--muted);
+  --color-accent: var(--sunken);
+  --color-accent-foreground: var(--text);
+  --color-destructive: var(--danger);
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--brand);
+
+  /* 모서리: 버튼·입력 8~10, 카드 14 */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* 선택 표시: 강조색을 8%만 섞은 연한 바탕(넓은 면에 강조색을 칠하지 않는다). */
+@utility bg-brand-sel {
+  background-color: color-mix(in srgb, var(--brand) 8%, var(--surface));
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.7;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+    transition:
+      background-color 0.3s ease,
+      color 0.3s ease;
+  }
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* 움직임 (design-rules 7). 실제 값은 lib/motion.ts와 같다. */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
+
+.rise {
+  animation: rise 0.5s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.status-dot {
+  transition: background-color 0.3s ease;
+}
+
+.theme-transition,
+.theme-transition * {
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 마크다운 편집기(components/editor). 디자인 규칙 5·6: 본문 15~16px/1.7, 모서리 8~10px, 그림자 없음. */
+.mpm-prose {
+  outline: none;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.mpm-prose > * + * { margin-top: 0.75em; }
+.mpm-prose h1, .mpm-prose h2, .mpm-prose h3 { font-weight: 600; line-height: 1.4; margin-top: 1.25em; }
+.mpm-prose h1 { font-size: 1.5rem; }
+.mpm-prose h2 { font-size: 1.25rem; }
+.mpm-prose h3 { font-size: 1.0625rem; }
+.mpm-prose ul { list-style: disc; padding-left: 1.5rem; }
+.mpm-prose ol { list-style: decimal; padding-left: 1.5rem; }
+.mpm-prose li > p { margin: 0; }
+.mpm-prose blockquote { border-left: 3px solid var(--border); padding-left: 1rem; color: var(--muted); }
+.mpm-prose a { color: var(--brand); text-decoration: underline; text-underline-offset: 3px; }
+.mpm-prose code {
+  font-family: var(--font-mono);
+  font-size: 0.875em;
+  background: var(--sunken);
+  border-radius: 6px;
+  padding: 0.1em 0.35em;
+}
+.mpm-prose pre {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.6;
+  background: var(--sunken);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  overflow-x: auto;
+}
+.mpm-prose pre code { background: none; padding: 0; font-size: inherit; }
+.mpm-prose hr { border-color: var(--border); }
+.mpm-prose table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+.mpm-prose th, .mpm-prose td { border: 1px solid var(--border); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+.mpm-prose th { background: var(--sunken); font-weight: 600; }
+.mpm-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--faint);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+.mpm-prose .mpm-image { position: relative; display: block; width: fit-content; max-width: 100%; }
+.mpm-prose .mpm-image img { display: block; max-width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--border); }
+.mpm-prose .mpm-image[data-status="uploading"] img { opacity: 0.55; }
+.mpm-prose .mpm-image[data-status="failed"] img { opacity: 0.4; }
+.mpm-prose .mpm-image-uploading,
+.mpm-prose .mpm-image-retry {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1;
+  padding: 6px 10px;
+}
+.mpm-prose .mpm-image-retry { color: var(--danger); cursor: pointer; }
+.mpm-prose .mpm-image-retry:hover { background: var(--sunken); }
+.mpm-prose .mpm-image-retry:focus-visible { outline: 3px solid color-mix(in srgb, var(--brand) 50%, transparent); outline-offset: 1px; }
+.mpm-prose .ProseMirror-selectednode img { outline: 2px solid var(--brand); outline-offset: 2px; }
+.mpm-prose .mpm-image-error {
+  position: absolute;
+  left: 8px;
+  bottom: 8px;
+  right: 8px;
+  width: fit-content;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--danger);
+  font-size: 12px;
+  line-height: 1.4;
+  padding: 6px 10px;
+}
+
+/*
+ * AI 표시를 그 판단을 만든 제공자의 색으로 칠한다(design-rules 4). 요소에 --ai-*-l/-d를 주면
+ * 여기서 테마에 맞는 쪽을 골라 --ai-tint 등으로 다시 내보낸다. 값을 안 주면 셸(프로젝트 기본 제공자) 값을 물려받는다.
+ */
+.ai-scope {
+  --ai-tint: var(--ai-tint-l);
+  --ai-ring: var(--ai-ring-l);
+  --ai-text: var(--ai-text-l);
+}
+[data-theme="dark"] .ai-scope,
+.ai-scope[data-theme="dark"] {
+  --ai-tint: var(--ai-tint-d);
+  --ai-ring: var(--ai-ring-d);
+  --ai-text: var(--ai-text-d);
+}
+[data-theme="dark"] [data-theme="light"] .ai-scope {
+  --ai-tint: var(--ai-tint-l);
+  --ai-ring: var(--ai-ring-l);
+  --ai-text: var(--ai-text-l);
+}
+
+/* 검토 진행 중인 단계의 점: 부드럽게 깜빡인다(움직임 끄기 설정이면 멈춘다). */
+@keyframes mpm-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.pulse-dot {
+  animation: mpm-pulse 2.4s ease-in-out infinite;
+}
+.mpm-prose img { max-width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--border); }
+/* 정리본 안의 제목은 카드 제목보다 작게(섹션 15px). */
+.mpm-summary h2 { font-size: 15px; font-weight: 600; margin-top: 1.1em; }
+.mpm-summary > h2:first-child { margin-top: 0; }

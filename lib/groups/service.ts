@@ -70,3 +70,22 @@ export async function deleteGroup(db: Db, groupId: string, actorId?: string): Pr
     await tx.delete(groups).where(eq(groups.id, groupId));
   });
 }
+
+/** 이름·담당 범위·레포 태그를 고친다(이 프로젝트의 그룹만). 같은 이름이 이미 있으면 거부한다. */
+export async function updateGroup(
+  db: Db,
+  input: { projectId: string; groupId: string; name: string; scopeDescription: string; repoTags: string[] },
+): Promise<Group> {
+  const [dup] = await db
+    .select({ id: groups.id })
+    .from(groups)
+    .where(and(eq(groups.projectId, input.projectId), eq(groups.name, input.name)));
+  if (dup && dup.id !== input.groupId) throw new InvalidTargetError("같은 이름의 그룹이 이미 있어요");
+  const [row] = await db
+    .update(groups)
+    .set({ name: input.name, scopeDescription: input.scopeDescription, repoTags: input.repoTags })
+    .where(and(eq(groups.id, input.groupId), eq(groups.projectId, input.projectId)))
+    .returning();
+  if (!row) throw new InvalidTargetError("그룹을 찾을 수 없어요");
+  return row;
+}

@@ -29,7 +29,7 @@ export type TicketAction =
   | { type: "confirmFixed" }
   | { type: "reopen"; reason: string }
   | { type: "close"; reason: CloseReason; note?: string; duplicateOfId?: string }
-  | { type: "reopenClosed" };
+  | { type: "reopenClosed"; reason?: string };
 
 export type ActionType = TicketAction["type"];
 

@@ -25,6 +25,7 @@ import {
   subscribe,
 } from "@/lib/tickets/service";
 import { InvalidTargetError } from "@/lib/tickets/targets";
+import { InvalidLinkedRefError } from "@/lib/tickets/linked-refs";
 import { TransitionError, type ActorCtx, type TicketAction } from "@/lib/tickets/state-machine";
 import { deleteGroup, setGroupMembers, upsertGroup } from "@/lib/groups/service";
 
@@ -238,6 +239,20 @@ describe("ticket service (PGlite)", () => {
       const q2 = await act(d, { type: "submit", target: null }, w.lead);
       expect(await notifiedUsers(q2.id)).toEqual([w.lead2.id]);
     });
+    test("resolve: 형식이 틀린 linkedRefs는 InvalidLinkedRefError로 거부하고 티켓은 그대로다, SHA는 소문자로", async () => {
+      const t = await submitted(w.req, { kind: "group", groupId: w.g1.id });
+      const c = await act(t, { type: "claim" }, w.dev1);
+      for (const bad of [["pr:abc"], ["commit:xyz1234"], ["javascript:alert(1)"], ["ticket:../../admin"], Array.from({ length: 11 }, (_, i) => `pr:${i + 1}`)]) {
+        await expect(act(c, { type: "resolve", linkedRefs: bad }, w.dev1)).rejects.toBeInstanceOf(InvalidLinkedRefError);
+      }
+      const [still] = await db.select().from(tickets).where(eq(tickets.id, t.id));
+      expect(still.status).toBe("in_progress");
+      expect(still.version).toBe(c.version);
+      await act(c, { type: "resolve", linkedRefs: ["commit:ABCDEF1", "pr:007"] }, w.dev1);
+      const [ev] = await db.select().from(ticketEvents).where(and(eq(ticketEvents.ticketId, t.id), eq(ticketEvents.type, "resolve")));
+      expect(ev.to).toMatchObject({ linkedRefs: ["commit:abcdef1", "pr:7"] });
+    });
+
     test("accept/claim/hold/resume → 작성자, resolve → 작성자+구독자, reopen → 담당자, close → 작성자+담당자+구독자", async () => {
       const t = await submitted(w.req, { kind: "group", groupId: w.g1.id });
       await subscribe(db, t.id, w.lead2.id);
@@ -249,7 +264,10 @@ describe("ticket service (PGlite)", () => {
       expect(await notifiedUsers(t.id, "hold")).toEqual([w.req.id]);
       const rs = await act(h, { type: "resume" }, w.dev1);
       expect(await notifiedUsers(t.id, "resume")).toEqual([w.req.id]);
-      const r = await act(rs, { type: "resolve" }, w.dev1);
+      const r = await act(rs, { type: "resolve", linkedRefs: ["pr:12", " commit:abc1234 ", "pr:12", ""] }, w.dev1);
+      // 링크한 PR/커밋은 이벤트에 남는다(요청자 확인 화면이 보여 준다). 공백·중복은 정리한다.
+      const [resolveEvent] = await db.select().from(ticketEvents).where(and(eq(ticketEvents.ticketId, t.id), eq(ticketEvents.type, "resolve")));
+      expect(resolveEvent.to).toMatchObject({ status: "resolved", linkedRefs: ["pr:12", "commit:abc1234"] });
       // 작성자 + 구독자(작성자, lead2), 행위자 dev1 제외, 중복 없음
       expect(await notifiedUsers(t.id, "resolve")).toEqual([w.lead2.id, w.req.id].sort());
       const ro = await act(r, { type: "reopen", reason: "아직 안 고쳐짐" }, w.req);
@@ -286,6 +304,23 @@ describe("ticket service (PGlite)", () => {
       for (const id of ["00000000-0000-0000-0000-000000000000", "not-a-uuid", foreign.id, t.id]) {
         const err = await act(c, { type: "close", reason: "duplicate", duplicateOfId: id }, w.dev1).catch((e) => e);
         expect(err).toBeInstanceOf(InvalidDuplicateError);
+      }
+      const [row] = await db.select().from(tickets).where(eq(tickets.id, t.id));
+      expect(row.version).toBe(c.version);
+    });
+    test("R24: 제출되지 않은 티켓(초안·검토 중·철회)은 중복 원본이 될 수 없고 구독도 옮겨지지 않는다", async () => {
+      const t = await submitted(w.req, { kind: "group", groupId: w.g1.id });
+      const c = await act(t, { type: "claim" }, w.dev1);
+      const draft = await createDraft(db, draftInput(w.project.id, w.req.id));
+      const reviewing = await createDraft(db, draftInput(w.project.id, w.req.id));
+      await db.update(tickets).set({ status: "ai_reviewing" }).where(eq(tickets.id, reviewing.id));
+      const withdrawn = await createDraft(db, draftInput(w.project.id, w.req.id));
+      await db.update(tickets).set({ status: "withdrawn_ai_resolved", withdrawKind: "already_resolved" }).where(eq(tickets.id, withdrawn.id));
+      for (const origin of [draft, reviewing, withdrawn]) {
+        const err = await act(c, { type: "close", reason: "duplicate", duplicateOfId: origin.id }, w.dev1).catch((e) => e);
+        expect(err).toBeInstanceOf(InvalidDuplicateError);
+        const subs = await db.select().from(ticketSubscriptions).where(eq(ticketSubscriptions.ticketId, origin.id));
+        expect(subs.map((x) => x.userId)).toEqual([w.req.id]);
       }
       const [row] = await db.select().from(tickets).where(eq(tickets.id, t.id));
       expect(row.version).toBe(c.version);

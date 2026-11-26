@@ -1,6 +1,6 @@
 import { and, desc, eq } from "drizzle-orm";
 import type { Db } from "@/lib/db";
-import { agentProfileVersions, projects, type AgentRole } from "@/lib/db/schema";
+import { agentProfileVersions, projects, user, type AgentRole } from "@/lib/db/schema";
 import { defaultModelFor } from "@/lib/ai/models";
 import { DEFAULT_MAX_STEPS, DEFAULT_TOOL_NAMES, defaultInstructionsFor } from "./defaults";
 
@@ -107,4 +107,23 @@ export async function ensureDefaultProfiles(db: Db, projectId: string, editorId:
       editorId,
     });
   }
+}
+
+export type ProfileVersionRow = { id: string; version: number; instructions: string; createdAt: Date; editorName: string | null };
+
+/** 역할별 버전 목록(최신이 위). 편집자 이름은 사용자가 지워졌으면 null. */
+export async function listProfileVersions(db: Db, projectId: string, role: AgentRole): Promise<ProfileVersionRow[]> {
+  const rows = await db
+    .select({
+      id: agentProfileVersions.id,
+      version: agentProfileVersions.version,
+      instructions: agentProfileVersions.instructions,
+      createdAt: agentProfileVersions.createdAt,
+      editorName: user.name,
+    })
+    .from(agentProfileVersions)
+    .leftJoin(user, eq(user.id, agentProfileVersions.createdBy))
+    .where(and(eq(agentProfileVersions.projectId, projectId), eq(agentProfileVersions.role, role)))
+    .orderBy(desc(agentProfileVersions.version));
+  return rows;
 }
