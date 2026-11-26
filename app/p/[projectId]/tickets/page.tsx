@@ -1,21 +1,42 @@
 import { Suspense } from "react";
 import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EmptyState, PageFallback, PageFrame } from "@/components/app-shell/page-frame";
+import { PageFallback, PageFrame } from "@/components/app-shell/page-frame";
+import { TicketTable } from "@/components/ticket/ticket-table";
+import { db } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
+import { ForbiddenError } from "@/lib/access";
+import { listTickets } from "@/lib/tickets/list";
+import { loadListParams } from "@/lib/tickets/views";
 
 export const metadata = { title: "티켓" };
 
-export default function TicketsPage({ params }: PageProps<"/p/[projectId]/tickets">) {
+export default function TicketsPage({ params, searchParams }: PageProps<"/p/[projectId]/tickets">) {
   return (
     <Suspense fallback={<PageFallback />}>
-      <Tickets params={params} />
+      <Tickets params={params} searchParams={searchParams} />
     </Suspense>
   );
 }
 
-async function Tickets({ params }: { params: PageProps<"/p/[projectId]/tickets">["params"] }) {
+async function Tickets({
+  params,
+  searchParams,
+}: {
+  params: PageProps<"/p/[projectId]/tickets">["params"];
+  searchParams: PageProps<"/p/[projectId]/tickets">["searchParams"];
+}) {
   const { projectId } = await params;
+  const user = await getSessionUser();
+  if (!user) redirect("/login");
+  const { view, urgency, status } = await loadListParams(searchParams);
+  const data = await listTickets(db, { projectId, userId: user.id, view, urgency, status }).catch((e) => {
+    if (e instanceof ForbiddenError) notFound();
+    throw e;
+  });
+
   return (
     <PageFrame
       title="티켓"
@@ -27,7 +48,15 @@ async function Tickets({ params }: { params: PageProps<"/p/[projectId]/tickets">
         </Button>
       }
     >
-      <EmptyState title="티켓 목록을 준비하고 있어요" body="요청이 접수되면 이곳에 모여요." />
+      <TicketTable
+        projectId={projectId}
+        provider={data.provider}
+        view={data.view}
+        views={data.views}
+        counts={data.counts}
+        rows={data.rows}
+        total={data.total}
+      />
     </PageFrame>
   );
 }

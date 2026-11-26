@@ -14,7 +14,7 @@ export function useTicketAction() {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function execute(fn: () => Promise<ActionResult>, opts: { onSuccess?: () => void; success?: string } = {}) {
+  function execute(fn: () => Promise<ActionResult>, opts: { onSuccess?: () => void; onConflict?: () => void; success?: string } = {}) {
     setError(null);
     return new Promise<boolean>((resolve) => {
       startTransition(async () => {
@@ -32,6 +32,7 @@ export function useTicketAction() {
         }
         if (res.code === "conflict") {
           toast.info(res.error);
+          opts.onConflict?.();
           router.refresh();
         } else {
           setError(res.error);

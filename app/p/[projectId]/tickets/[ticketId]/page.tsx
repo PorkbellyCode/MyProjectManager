@@ -4,7 +4,7 @@ import { db } from "@/lib/db";
 import { env } from "@/lib/env";
 import { getSessionUser } from "@/lib/auth";
 import { getTicketDetail, type TicketDetail } from "@/lib/tickets/detail";
-import { CATEGORY_LABEL, CLOSE_REASON_LABEL, ticketRef, URGENCY_LABEL, URGENCY_LEVEL, WITHDRAW_LABEL } from "@/lib/tickets/labels";
+import { CATEGORY_LABEL, CLOSE_REASON_LABEL, STATUS_LABEL, ticketRef, URGENCY_LABEL, URGENCY_LEVEL, WITHDRAW_LABEL } from "@/lib/tickets/labels";
 import { fadeUpDelay } from "@/lib/motion";
 import { PageFallback } from "@/components/app-shell/page-frame";
 import { Poller } from "@/components/review/poller";
@@ -25,6 +25,8 @@ import { CloseDialog } from "@/components/ticket/close-dialog";
 import { ConfirmCard } from "@/components/ticket/confirm-card";
 import { TicketChip } from "@/components/ticket/ticket-chip";
 import { UrgencyBars } from "@/components/ticket/urgency-bars";
+import { ActionsPanel } from "@/components/ticket/actions-panel";
+import { LiveAnnouncer } from "@/components/ticket/live-announcer";
 
 export const metadata = { title: "티켓" };
 
@@ -106,6 +108,23 @@ function WithdrawnNotice({ d }: { d: TicketDetail }) {
   );
 }
 
+const TURN_ANNOUNCE: Record<string, string> = {
+  duplicate_candidates: "중복 확인 결과가 준비됐어요",
+  resolution: "해소 확인 결과가 준비됐어요",
+  questions: "질문이 준비됐어요",
+  ready: "제출 준비가 됐어요",
+  failed: "AI 검토에 실패했어요. 그대로 제출할 수 있어요.",
+};
+
+/** 폴링·새로 고침으로 바뀐 카드나 상태를 낭독기에 알릴 문구. 바뀔 때만 읽힌다(LiveAnnouncer). */
+function announcement(d: TicketDetail): string {
+  const t = d.ticket;
+  const turn = d.openTurn ? TURN_ANNOUNCE[d.openTurn.kind] : undefined;
+  const parts = [turn ?? `티켓 상태가 ${STATUS_LABEL[t.status]}(으)로 바뀌었어요`];
+  if (d.summary) parts.push("정리본이 준비됐어요");
+  return parts.join(". ");
+}
+
 function TicketView({ d, traceBase }: { d: TicketDetail; traceBase: string | null }) {
   const t = d.ticket;
   const submitted = !PRE_SUBMIT.has(t.status);
@@ -121,6 +140,7 @@ function TicketView({ d, traceBase }: { d: TicketDetail; traceBase: string | nul
   return (
     <div className="mx-auto grid w-full max-w-[1440px] lg:grid-cols-[minmax(0,1fr)_minmax(280px,340px)]">
       <Poller active={waitingSummary} />
+      <LiveAnnouncer message={announcement(d)} />
       <article className="flex min-w-0 flex-col gap-8 px-6 py-10 sm:px-12">
         <header className="rise flex flex-col gap-3">
           <div className="flex items-center gap-2.5 font-mono text-[13px] text-faint">
@@ -174,6 +194,24 @@ function TicketView({ d, traceBase }: { d: TicketDetail; traceBase: string | nul
       </article>
 
       <aside aria-label="티켓 정보" className="flex flex-col gap-7 border-line px-6 pb-12 sm:px-12 lg:border-l lg:px-8 lg:py-10">
+        {staff && (
+          <ActionsPanel
+            key={`${t.id}:${t.version}`}
+            projectId={d.project.id}
+            ticketId={t.id}
+            version={t.version}
+            status={t.status}
+            urgency={t.urgency}
+            target={t.target}
+            actions={d.actions}
+            closeReasons={d.closeReasons}
+            canProposeWontDo={d.canProposeWontDo}
+            canSetUrgency={d.canSetUrgency}
+            options={{ people: d.people.filter((p) => p.role !== "requester"), groups: d.groups }}
+            recommendation={d.aiRecommendation}
+            duplicateCandidate={d.duplicateCandidate}
+          />
+        )}
         <dl className="grid gap-[18px]">
           <div className="flex flex-col gap-1.5">
             <dt className="text-xs text-faint">상태</dt>
