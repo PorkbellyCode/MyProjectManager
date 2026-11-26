@@ -150,7 +150,7 @@ export async function performAction(
         actorKind: actor.role === "system" ? "system" : "user",
         type: action.type,
         from: pick(cur, keys),
-        to: pick(updated, keys),
+        to: { ...pick(updated, keys), ...linkedRefsOf(action) },
         reason: reasonOf(action),
       })
       .returning();
@@ -161,6 +161,13 @@ export async function performAction(
     await emitNotifications(tx, event, updated);
     return updated;
   });
+}
+
+/** 처리 완료에 링크한 PR/커밋(`pr:12`, `commit:abc1234`)은 이벤트에 남겨 요청자 화면이 보여 준다. */
+function linkedRefsOf(action: TicketAction): { linkedRefs?: string[] } {
+  if (action.type !== "resolve") return {};
+  const refs = (action.linkedRefs ?? []).map((r) => r.trim()).filter(Boolean);
+  return refs.length ? { linkedRefs: [...new Set(refs)] } : {};
 }
 
 function reasonOf(action: TicketAction): string | null {

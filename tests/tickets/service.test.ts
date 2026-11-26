@@ -249,7 +249,10 @@ describe("ticket service (PGlite)", () => {
       expect(await notifiedUsers(t.id, "hold")).toEqual([w.req.id]);
       const rs = await act(h, { type: "resume" }, w.dev1);
       expect(await notifiedUsers(t.id, "resume")).toEqual([w.req.id]);
-      const r = await act(rs, { type: "resolve" }, w.dev1);
+      const r = await act(rs, { type: "resolve", linkedRefs: ["pr:12", " commit:abc1234 ", "pr:12", ""] }, w.dev1);
+      // 링크한 PR/커밋은 이벤트에 남는다(요청자 확인 화면이 보여 준다). 공백·중복은 정리한다.
+      const [resolveEvent] = await db.select().from(ticketEvents).where(and(eq(ticketEvents.ticketId, t.id), eq(ticketEvents.type, "resolve")));
+      expect(resolveEvent.to).toMatchObject({ status: "resolved", linkedRefs: ["pr:12", "commit:abc1234"] });
       // 작성자 + 구독자(작성자, lead2), 행위자 dev1 제외, 중복 없음
       expect(await notifiedUsers(t.id, "resolve")).toEqual([w.lead2.id, w.req.id].sort());
       const ro = await act(r, { type: "reopen", reason: "아직 안 고쳐짐" }, w.req);
