@@ -279,3 +279,37 @@
   line-height: 1.4;
   padding: 6px 10px;
 }
+
+/*
+ * AI 표시를 그 판단을 만든 제공자의 색으로 칠한다(design-rules 4). 요소에 --ai-*-l/-d를 주면
+ * 여기서 테마에 맞는 쪽을 골라 --ai-tint 등으로 다시 내보낸다. 값을 안 주면 셸(프로젝트 기본 제공자) 값을 물려받는다.
+ */
+.ai-scope {
+  --ai-tint: var(--ai-tint-l);
+  --ai-ring: var(--ai-ring-l);
+  --ai-text: var(--ai-text-l);
+}
+[data-theme="dark"] .ai-scope,
+.ai-scope[data-theme="dark"] {
+  --ai-tint: var(--ai-tint-d);
+  --ai-ring: var(--ai-ring-d);
+  --ai-text: var(--ai-text-d);
+}
+[data-theme="dark"] [data-theme="light"] .ai-scope {
+  --ai-tint: var(--ai-tint-l);
+  --ai-ring: var(--ai-ring-l);
+  --ai-text: var(--ai-text-l);
+}
+
+/* 검토 진행 중인 단계의 점: 부드럽게 깜빡인다(움직임 끄기 설정이면 멈춘다). */
+@keyframes mpm-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+.pulse-dot {
+  animation: mpm-pulse 2.4s ease-in-out infinite;
+}
+.mpm-prose img { max-width: 100%; height: auto; border-radius: 10px; border: 1px solid var(--border); }
+/* 정리본 안의 제목은 카드 제목보다 작게(섹션 15px). */
+.mpm-summary h2 { font-size: 15px; font-weight: 600; margin-top: 1.1em; }
+.mpm-summary > h2:first-child { margin-top: 0; }
