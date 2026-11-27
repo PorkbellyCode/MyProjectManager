@@ -26,7 +26,7 @@ const sameTarget = (a: Target, b: Target) =>
 /** 패널의 트리거 버튼 모양(상세 화면 속성 패널 폭에 맞춘다). */
 export function PanelButton({ primary, children, ...props }: React.ComponentProps<typeof Button> & { primary?: boolean }) {
   return (
-    <Button type="button" variant={primary ? "default" : "outline"} className={primary ? "h-11 w-full rounded-[10px] text-[15px] font-semibold" : "h-10 w-full rounded-[10px]"} {...props}>
+    <Button type="button" variant={primary ? "default" : "outline"} className={primary ? "h-11 w-full rounded-[10px] text-[15px] font-semibold" : "h-10 w-full rounded-[10px] pointer-coarse:h-11"} {...props}>
       {children}
     </Button>
   );

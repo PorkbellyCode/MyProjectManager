@@ -1,12 +1,22 @@
+import { Suspense } from "react";
 import { db } from "@/lib/db";
 import { getAdminDocs } from "@/lib/projects/admin";
 import { requireLeadPage } from "@/lib/projects/admin-page";
+import { SectionSkeleton } from "../section-skeleton";
 import { DomainPanel } from "@/components/admin/domain-panel";
 import { SectionHeader } from "../section-header";
 
 export const metadata = { title: "도메인 지식" };
 
-export default async function DomainSection({ params }: PageProps<"/p/[projectId]/admin/domain">) {
+export default function DomainSection({ params }: PageProps<"/p/[projectId]/admin/domain">) {
+  return (
+    <Suspense fallback={<SectionSkeleton />}>
+      <DomainSectionBody params={params} />
+    </Suspense>
+  );
+}
+
+async function DomainSectionBody({ params }: { params: PageProps<"/p/[projectId]/admin/domain">["params"] }) {
   const { projectId } = await requireLeadPage(params);
   const docs = await getAdminDocs(db, projectId);
   return (

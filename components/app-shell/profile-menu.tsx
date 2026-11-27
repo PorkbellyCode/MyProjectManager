@@ -128,7 +128,7 @@ export function ProfileMenu({
         <button
           type="button"
           aria-label="프로필 메뉴"
-          className="flex size-9 items-center justify-center rounded-full border border-line bg-sunken text-[13px] font-semibold text-text transition-[transform] duration-[120ms] hover:-translate-y-px"
+          className="flex size-9 items-center justify-center rounded-full border pointer-coarse:size-11 border-line bg-sunken text-[13px] font-semibold text-text transition-[transform] duration-[120ms] hover:-translate-y-px"
         >
           {initial}
         </button>
@@ -157,7 +157,7 @@ export function ProfileMenu({
                 aria-checked={themePref === t.value}
                 onClick={() => chooseTheme(t.value)}
                 className={cn(
-                  "flex items-center justify-center gap-1.5 rounded-md py-1.5 text-[13px] transition-colors duration-[120ms]",
+                  "flex items-center justify-center gap-1.5 rounded-md py-1.5 text-[13px] pointer-coarse:min-h-11 transition-colors duration-[120ms]",
                   themePref === t.value ? "bg-surface font-semibold text-text" : "text-muted-text hover:text-text",
                 )}
               >
@@ -188,7 +188,7 @@ export function ProfileMenu({
                   aria-pressed={selected}
                   onClick={() => chooseAccent(p.accent)}
                   className={cn(
-                    "flex flex-1 items-center gap-2 rounded-lg border px-2.5 py-2 text-[13px] transition-[transform,border-color] duration-[120ms] hover:-translate-y-px",
+                    "flex flex-1 items-center gap-2 rounded-lg border px-2.5 py-2 text-[13px] pointer-coarse:min-h-11 transition-[transform,border-color] duration-[120ms] hover:-translate-y-px",
                     selected ? "border-brand" : "border-line",
                   )}
                 >
@@ -243,7 +243,7 @@ export function ProfileMenu({
             type="button"
             onClick={resetAccent}
             disabled={!override}
-            className="inline-flex items-center gap-1.5 self-start text-[13px] text-muted-text underline-offset-4 hover:text-text hover:underline disabled:pointer-events-none disabled:opacity-40"
+            className="inline-flex items-center gap-1.5 self-start text-[13px] text-muted-text underline-offset-4 pointer-coarse:min-h-11 hover:text-text hover:underline disabled:pointer-events-none disabled:opacity-40"
           >
             <RotateCcw className="size-3.5" aria-hidden="true" />
             프로젝트 기본값으로
@@ -253,7 +253,7 @@ export function ProfileMenu({
         <div className="p-2">
           <a
             href="/projects/new"
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-text transition-colors hover:bg-sunken hover:text-text"
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-text pointer-coarse:min-h-11 transition-colors hover:bg-sunken hover:text-text"
           >
             <Plus className="size-4" aria-hidden="true" />
             새 프로젝트 만들기

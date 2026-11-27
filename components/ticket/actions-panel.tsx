@@ -167,7 +167,7 @@ function UrgencyMenu({ projectId, ticketId, version, urgency }: { projectId: str
             void execute(() => setUrgencyAction(projectId, ticketId, { expectedVersion: version, to }), { success: `긴급도를 ${URGENCY_LABEL[to as Urgency]}(으)로 바꿨어요.` });
           }}
         >
-          {[...URGENCIES].reverse().map((u) => (
+          {URGENCIES.map((u) => (
             <DropdownMenuRadioItem key={u} value={u} className="gap-2">
               <UrgencyBars level={URGENCY_LEVEL[u]} />
               {URGENCY_LABEL[u]}

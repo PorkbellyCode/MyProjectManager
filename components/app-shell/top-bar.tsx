@@ -45,7 +45,7 @@ function ThemeToggle({ pref }: { pref: ThemePreference }) {
         save({ theme: next });
       }}
       data-pref={pref}
-      className="flex size-10 items-center justify-center rounded-lg border border-line text-text transition-[transform,background-color] duration-[120ms] hover:-translate-y-px hover:bg-sunken"
+      className="flex size-10 items-center justify-center rounded-lg border border-line text-text pointer-coarse:size-11 transition-[transform,background-color] duration-[120ms] hover:-translate-y-px hover:bg-sunken"
     >
       {resolved === "dark" ? <Sun className="size-[18px]" aria-hidden="true" /> : <Moon className="size-[18px]" aria-hidden="true" />}
     </button>
@@ -113,7 +113,7 @@ export function TopBar({ user, projects, current, unread, theme, accentOverride,
             aria-label="이동하거나 검색하기"
             aria-keyshortcuts="Control+K Meta+K"
             title="이동하거나 검색하기 (Ctrl K)"
-            className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-line text-text transition-[transform,background-color] duration-[120ms] hover:-translate-y-px hover:bg-sunken md:h-10 md:w-full md:max-w-[440px] md:justify-start md:gap-2.5 md:bg-sunken md:px-3.5 md:text-left md:text-sm md:text-faint"
+            className="flex size-10 shrink-0 items-center justify-center rounded-lg border border-line text-text pointer-coarse:h-11 max-md:pointer-coarse:w-11 transition-[transform,background-color] duration-[120ms] hover:-translate-y-px hover:bg-sunken md:h-10 md:w-full md:max-w-[440px] md:justify-start md:gap-2.5 md:bg-sunken md:px-3.5 md:text-left md:text-sm md:text-faint"
           >
             <Search className="size-[18px] shrink-0 md:size-4" aria-hidden="true" />
             <span aria-hidden="true" className="hidden min-w-0 flex-1 truncate md:block">

@@ -75,7 +75,7 @@ export function NotificationBadge({ initial }: { initial: number }) {
       aria-current={active ? "page" : undefined}
       title="알림"
       className={cn(
-        "relative flex size-10 items-center justify-center rounded-lg border text-text transition-[transform,background-color] duration-[120ms] hover:-translate-y-px",
+        "relative flex size-10 items-center pointer-coarse:size-11 justify-center rounded-lg border text-text transition-[transform,background-color] duration-[120ms] hover:-translate-y-px",
         active ? "border-brand bg-brand-sel text-brand" : "border-line hover:bg-sunken",
       )}
     >

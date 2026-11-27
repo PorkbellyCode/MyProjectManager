@@ -30,7 +30,7 @@ function ChipRadio({ value, children }: { value: string; children: React.ReactNo
   return (
     <RadioGroupPrimitive.Item
       value={value}
-      className="inline-flex h-9 items-center gap-2 rounded-full border border-line bg-surface px-3.5 text-sm text-muted-text outline-none transition-[background-color,border-color,color,transform] duration-[120ms] hover:-translate-y-px hover:text-text focus-visible:ring-[3px] focus-visible:ring-ring/40 data-[state=checked]:border-brand data-[state=checked]:bg-brand-sel data-[state=checked]:font-medium data-[state=checked]:text-text"
+      className="inline-flex h-9 items-center gap-2 rounded-full pointer-coarse:h-11 border border-line bg-surface px-3.5 text-sm text-muted-text outline-none transition-[background-color,border-color,color,transform] duration-[120ms] hover:-translate-y-px hover:text-text focus-visible:ring-[3px] focus-visible:ring-ring/40 data-[state=checked]:border-brand data-[state=checked]:bg-brand-sel data-[state=checked]:font-medium data-[state=checked]:text-text"
     >
       {children}
     </RadioGroupPrimitive.Item>

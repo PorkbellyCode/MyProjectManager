@@ -42,7 +42,7 @@ export function MobileNav({
         <button
           type="button"
           aria-label="메뉴 열기"
-          className="-ml-1.5 flex size-10 shrink-0 items-center justify-center rounded-lg text-text transition-colors hover:bg-sunken md:hidden"
+          className="-ml-1.5 flex size-10 shrink-0 pointer-coarse:size-11 items-center justify-center rounded-lg text-text transition-colors hover:bg-sunken md:hidden"
         >
           <Menu className="size-5" aria-hidden="true" />
         </button>

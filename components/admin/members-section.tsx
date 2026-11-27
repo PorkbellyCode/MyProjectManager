@@ -26,7 +26,7 @@ export const ROLE_LABEL: Record<MemberRole, string> = { requester: "요청자", 
 const ROLES: MemberRole[] = ["requester", "developer", "lead"];
 
 export const selectClass =
-  "h-9 rounded-lg border border-line bg-surface px-2.5 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:opacity-50";
+  "h-9 rounded-lg border border-line bg-surface px-2.5 text-sm outline-none pointer-coarse:h-11 focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:opacity-50";
 
 function MemberRow({ projectId, m, self }: { projectId: string; m: AdminMember; self: boolean }) {
   const { execute, pending, error } = useTicketAction();

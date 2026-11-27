@@ -85,8 +85,8 @@ function GroupCard({ projectId, group, staff }: { projectId: string; group: Admi
           <ul className="flex flex-wrap gap-2">
             {staff.map((m) => (
               <li key={m.userId}>
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line px-3 py-1.5 text-sm has-[:checked]:border-brand has-[:checked]:bg-brand-sel">
-                  <input type="checkbox" className="accent-[var(--brand)]" checked={picked.includes(m.userId)} onChange={() => toggle(m.userId)} />
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line px-3 py-1.5 text-sm pointer-coarse:min-h-11 pointer-coarse:px-4 has-[:checked]:border-brand has-[:checked]:bg-brand-sel">
+                  <input type="checkbox" className="size-4 accent-[var(--brand)] pointer-coarse:size-5" checked={picked.includes(m.userId)} onChange={() => toggle(m.userId)} />
                   {m.name}
                   <span className="text-xs text-muted-text">{ROLE_LABEL[m.role]}</span>
                 </label>
