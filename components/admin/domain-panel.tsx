@@ -55,9 +55,6 @@ export function DomainPanel({ projectId, docs }: { projectId: string; docs: Doc[
 
   return (
     <div className="flex flex-col gap-6">
-      <p className="max-w-prose text-sm leading-[1.75] text-muted-text">
-        AI가 요청을 검토할 때 참고하는 업무 용어와 정상 동작 기준이에요. 항목마다 제목을 붙여 적어 주세요.
-      </p>
       {docs.length === 0 && <p className="text-sm text-muted-text">아직 항목이 없어요.</p>}
       {docs.map((d) => (
         <DocCard key={`${d.id}:${d.body.length}`} projectId={projectId} doc={d} />

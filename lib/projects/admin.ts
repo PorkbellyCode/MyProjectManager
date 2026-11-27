@@ -80,54 +80,84 @@ export type AdminData = {
   agents: AdminAgent[];
 };
 
-/** 관리자 화면에 필요한 값 전부. 호출하는 쪽이 lead인지 확인한다. */
-export async function getAdminData(db: Db, projectId: string): Promise<AdminData | null> {
-  const project = await getProjectSummary(db, projectId);
-  if (!project) return null;
-  // 렌더 중에는 쓰지 않는다. 기본 프로필은 프로젝트를 만들 때(createProject)와 시드가 채운다.
+async function orgOf(db: Db, projectId: string): Promise<string | null> {
   const [p] = await db.select({ organizationId: projects.organizationId }).from(projects).where(eq(projects.id, projectId));
-  const [memberRows, inviteRows, groupRows, gmRows, docRows, agents] = await Promise.all([
-    db
-      .select({ userId: user.id, name: user.name, email: user.email, role: member.role })
-      .from(member)
-      .innerJoin(user, eq(user.id, member.userId))
-      .where(eq(member.organizationId, p.organizationId))
-      .orderBy(asc(member.createdAt), asc(user.name)),
-    db
-      .select()
-      .from(invitation)
-      .where(and(eq(invitation.organizationId, p.organizationId), eq(invitation.status, "pending")))
-      .orderBy(desc(invitation.createdAt)),
+  return p?.organizationId ?? null;
+}
+
+/** 멤버(가입 순). 관리자 '멤버·초대'와 '그룹'(그룹원 후보)이 쓴다. */
+export async function getAdminMembers(db: Db, projectId: string): Promise<AdminMember[]> {
+  const org = await orgOf(db, projectId);
+  if (!org) return [];
+  const rows = await db
+    .select({ userId: user.id, name: user.name, email: user.email, role: member.role })
+    .from(member)
+    .innerJoin(user, eq(user.id, member.userId))
+    .where(eq(member.organizationId, org))
+    .orderBy(asc(member.createdAt), asc(user.name));
+  return rows.flatMap((m) => (isMemberRole(m.role) ? [{ ...m, role: m.role }] : []));
+}
+
+/** 대기 중이고 만료되지 않은 초대(최근 순). */
+export async function getAdminInvitations(db: Db, projectId: string): Promise<AdminInvitation[]> {
+  const org = await orgOf(db, projectId);
+  if (!org) return [];
+  const rows = await db
+    .select()
+    .from(invitation)
+    .where(and(eq(invitation.organizationId, org), eq(invitation.status, "pending")))
+    .orderBy(desc(invitation.createdAt));
+  return rows.flatMap((i) =>
+    i.role && isMemberRole(i.role) && i.expiresAt.getTime() > Date.now() ? [{ id: i.id, email: i.email, role: i.role, expiresAt: i.expiresAt }] : [],
+  );
+}
+
+/** 그룹(이름순)과 그룹원 id. */
+export async function getAdminGroups(db: Db, projectId: string): Promise<AdminGroup[]> {
+  const [groupRows, gmRows] = await Promise.all([
     db.select().from(groups).where(eq(groups.projectId, projectId)).orderBy(asc(groups.name)),
     db
       .select({ groupId: groupMembers.groupId, userId: groupMembers.userId })
       .from(groupMembers)
       .innerJoin(groups, eq(groups.id, groupMembers.groupId))
       .where(eq(groups.projectId, projectId)),
-    db.select().from(domainDocs).where(eq(domainDocs.projectId, projectId)).orderBy(asc(domainDocs.title)),
-    // 프로필이 없는 역할은 건너뛴다(빈 상태로 보인다). 화면을 그리며 만들지는 않는다.
-    Promise.all(
-      AGENT_ROLES.map(async (role): Promise<AdminAgent | null> => {
-        const versions = await listProfileVersions(db, projectId, role);
-        if (versions.length === 0) return null;
-        return { role, active: await getActiveProfile(db, projectId, role), versions };
-      }),
-    ).then((list) => list.filter((a): a is AdminAgent => a !== null)),
   ]);
-  return {
-    project,
-    members: memberRows.flatMap((m) => (isMemberRole(m.role) ? [{ ...m, role: m.role }] : [])),
-    invitations: inviteRows.flatMap((i) =>
-      i.role && isMemberRole(i.role) && i.expiresAt.getTime() > Date.now() ? [{ id: i.id, email: i.email, role: i.role, expiresAt: i.expiresAt }] : [],
-    ),
-    groups: groupRows.map((g) => ({
-      id: g.id,
-      name: g.name,
-      scopeDescription: g.scopeDescription,
-      repoTags: g.repoTags,
-      memberIds: gmRows.filter((r) => r.groupId === g.id).map((r) => r.userId),
-    })),
-    docs: docRows.map((d) => ({ id: d.id, title: d.title, body: d.body, updatedAt: d.updatedAt })),
-    agents,
-  };
+  return groupRows.map((g) => ({
+    id: g.id,
+    name: g.name,
+    scopeDescription: g.scopeDescription,
+    repoTags: g.repoTags,
+    memberIds: gmRows.filter((r) => r.groupId === g.id).map((r) => r.userId),
+  }));
+}
+
+export async function getAdminDocs(db: Db, projectId: string): Promise<AdminData["docs"]> {
+  const rows = await db.select().from(domainDocs).where(eq(domainDocs.projectId, projectId)).orderBy(asc(domainDocs.title));
+  return rows.map((d) => ({ id: d.id, title: d.title, body: d.body, updatedAt: d.updatedAt }));
+}
+
+/** 프로필이 없는 역할은 건너뛴다(빈 상태로 보인다). 화면을 그리며 만들지는 않는다. */
+export async function getAdminAgents(db: Db, projectId: string): Promise<AdminAgent[]> {
+  const list = await Promise.all(
+    AGENT_ROLES.map(async (role): Promise<AdminAgent | null> => {
+      const versions = await listProfileVersions(db, projectId, role);
+      if (versions.length === 0) return null;
+      return { role, active: await getActiveProfile(db, projectId, role), versions };
+    }),
+  );
+  return list.filter((a): a is AdminAgent => a !== null);
+}
+
+/** 관리자 화면에 필요한 값 전부(섹션별 함수를 모은 것). 화면은 섹션마다 필요한 것만 부른다. 호출하는 쪽이 lead인지 확인한다. */
+export async function getAdminData(db: Db, projectId: string): Promise<AdminData | null> {
+  const project = await getProjectSummary(db, projectId);
+  if (!project) return null;
+  const [members, invitations, groupList, docs, agents] = await Promise.all([
+    getAdminMembers(db, projectId),
+    getAdminInvitations(db, projectId),
+    getAdminGroups(db, projectId),
+    getAdminDocs(db, projectId),
+    getAdminAgents(db, projectId),
+  ]);
+  return { project, members, invitations, groups: groupList, docs, agents };
 }

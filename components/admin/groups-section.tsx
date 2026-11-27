@@ -122,8 +122,8 @@ export function GroupsSection({ projectId, groups, members }: { projectId: strin
 
   return (
     <section aria-labelledby="groups-h" className="flex flex-col gap-4">
-      <h2 id="groups-h" className="text-[17px] font-semibold">
-        그룹과 그룹원
+      <h2 id="groups-h" className="text-xl font-semibold leading-[1.4]">
+        그룹
       </h2>
       <p className="max-w-prose text-sm leading-[1.75] text-muted-text">
         그룹은 티켓을 받는 큐예요. 그룹원은 개발자나 리드만 될 수 있고, 요청자로 바꾸면 그룹에서 빠져요.
