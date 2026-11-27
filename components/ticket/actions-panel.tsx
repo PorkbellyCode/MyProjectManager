@@ -1,5 +1,6 @@
 "use client";
 
+import { josa } from "@/lib/ko";
 import { Loader2 } from "lucide-react";
 import {
   DropdownMenu,
@@ -159,12 +160,12 @@ function UrgencyMenu({ projectId, ticketId, version, urgency }: { projectId: str
         </PanelButton>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-44">
-        <DropdownMenuLabel className="text-xs font-normal text-faint">사람만 바꿀 수 있어요</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-xs font-normal text-faint">AI는 긴급도를 바꾸지 않아요</DropdownMenuLabel>
         <DropdownMenuRadioGroup
           value={urgency}
           onValueChange={(to) => {
             if (to === urgency) return;
-            void execute(() => setUrgencyAction(projectId, ticketId, { expectedVersion: version, to }), { success: `긴급도를 ${URGENCY_LABEL[to as Urgency]}(으)로 바꿨어요.` });
+            void execute(() => setUrgencyAction(projectId, ticketId, { expectedVersion: version, to }), { success: `긴급도를 ${josa(URGENCY_LABEL[to as Urgency], "으로/로")} 바꿨어요.` });
           }}
         >
           {URGENCIES.map((u) => (

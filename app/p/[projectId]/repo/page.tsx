@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { josa } from "@/lib/ko";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
@@ -32,7 +33,7 @@ async function Repo({ params }: { params: PageProps<"/p/[projectId]/repo">["para
   return (
     <PageFrame
       title="레포"
-      description={`${data.project.repoUrl.replace("https://github.com/", "")} 를 분석한 결과예요.`}
+      description={`${josa(data.project.repoUrl.replace("https://github.com/", ""), "을/를")} 분석한 결과예요.`}
       actions={canEdit ? <ReanalyzeButton projectId={projectId} disabled={data.analyzing} /> : undefined}
     >
       <RepoOverview projectId={projectId} data={data} canEdit={canEdit} />

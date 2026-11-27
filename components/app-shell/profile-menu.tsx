@@ -184,8 +184,8 @@ export function ProfileMenu({
                 <button
                   key={p.provider}
                   type="button"
-                  aria-label={p.label}
                   aria-pressed={selected}
+                  title={p.label}
                   onClick={() => chooseAccent(p.accent)}
                   className={cn(
                     "flex flex-1 items-center gap-2 rounded-lg border px-2.5 py-2 text-[13px] pointer-coarse:min-h-11 transition-[transform,border-color] duration-[120ms] hover:-translate-y-px",
@@ -199,6 +199,8 @@ export function ProfileMenu({
                   >
                     {selected && <Check className="size-3 text-white" strokeWidth={3} />}
                   </span>
+                  {/* 접근성 이름 = 보이는 글자 + 제공자 이름("Claude 주황"). */}
+                  <span className="sr-only">{p.label.split(" ")[0]} </span>
                   <span className="truncate">{p.label.split(" ")[1]}</span>
                 </button>
               );
@@ -222,7 +224,7 @@ export function ProfileMenu({
                   setHex(e.target.value);
                   setHexError(null);
                 }}
-                placeholder="직접 입력  #7C3AED"
+                placeholder="직접 입력 (예: #7C3AED)"
                 spellCheck={false}
                 autoComplete="off"
                 aria-invalid={hexError ? true : undefined}

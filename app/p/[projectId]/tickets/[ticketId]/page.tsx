@@ -30,6 +30,7 @@ import { UrgencyBars } from "@/components/ticket/urgency-bars";
 import { ActionsPanel } from "@/components/ticket/actions-panel";
 import { LiveAnnouncer } from "@/components/ticket/live-announcer";
 import { BackToList } from "@/components/ticket/back-to-list";
+import { josa } from "@/lib/ko";
 
 // 메타데이터와 화면이 같은 요청 안에서 한 번만 읽도록 묶는다.
 const loadDetail = cache(async (projectId: string, ticketId: string) => {
@@ -106,7 +107,7 @@ function WithdrawnNotice({ d }: { d: TicketDetail }) {
   return (
     <section aria-label="철회" className="rise flex flex-col gap-3 rounded-[14px] border border-line bg-surface p-6" style={fadeUpDelay(1)}>
       <p className="text-base font-semibold">
-        {kind === "joined_duplicate" ? "기존 티켓에 합류했어요" : `${WITHDRAW_LABEL[kind]}으로 보고 철회했어요`}
+        {kind === "joined_duplicate" ? "기존 티켓에 합류했어요" : `${josa(WITHDRAW_LABEL[kind], "으로/로")} 보고 철회했어요`}
       </p>
       {d.joined ? (
         <>
@@ -134,7 +135,7 @@ const TURN_ANNOUNCE: Record<string, string> = {
 function announcement(d: TicketDetail): string {
   const t = d.ticket;
   const turn = d.openTurn ? TURN_ANNOUNCE[d.openTurn.kind] : undefined;
-  const parts = [turn ?? `티켓 상태가 ${STATUS_LABEL[t.status]}(으)로 바뀌었어요`];
+  const parts = [turn ?? `티켓 상태가 ${josa(STATUS_LABEL[t.status], "으로/로")} 바뀌었어요`];
   if (d.summary) parts.push("정리본이 준비됐어요");
   return parts.join(". ");
 }

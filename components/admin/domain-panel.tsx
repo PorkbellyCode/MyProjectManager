@@ -63,9 +63,9 @@ export function DomainPanel({ projectId, docs }: { projectId: string; docs: Doc[
         <h3 className="text-[17px] font-semibold">새 항목</h3>
         <div className="flex flex-col gap-2">
           <Label htmlFor="doc-title">제목</Label>
-          <Input id="doc-title" value={title} maxLength={80} onChange={(e) => setTitle(e.target.value)} />
+          <Input id="doc-title" value={title} maxLength={80} placeholder="예: 업무 용어, 정상 동작 기준" onChange={(e) => setTitle(e.target.value)} />
         </div>
-        <MarkdownEditor key={nonce} value={body} onChange={setBody} projectId={projectId} label="새 항목 내용" minHeight={120} />
+        <MarkdownEditor key={nonce} value={body} onChange={setBody} projectId={projectId} label="새 항목 내용" minHeight={120} placeholder="AI가 참고할 규칙이나 용어 설명을 적어 주세요. 표와 목록도 쓸 수 있어요." />
         {error && (
           <p role="alert" className="text-sm text-destructive">
             {error}

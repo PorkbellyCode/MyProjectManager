@@ -10,6 +10,7 @@ import type { AiNoteView, TicketRow } from "@/lib/tickets/list";
 import { CATEGORY_LABEL, STATUS_LABEL, ticketRef, URGENCY_LABEL, URGENCY_LEVEL } from "@/lib/tickets/labels";
 import { FILTER_STATUSES, FILTER_URGENCIES, LIST_CAP, listParsers, VIEW_HINT, VIEW_LABEL, type TicketView } from "@/lib/tickets/views";
 import { listStagger } from "@/lib/motion";
+import { josa } from "@/lib/ko";
 import { cn } from "@/lib/utils";
 import { StatusText } from "./status-badge";
 import { UrgencyBars } from "./urgency-bars";
@@ -265,14 +266,16 @@ export function TicketTable({ projectId, provider, view, views, counts, rows, to
               </>
             )}
           </p>
-          <p className="inline-flex items-center gap-1 text-faint">
-            <ArrowDown className="size-3" aria-hidden="true" />
-            긴급도 높은 순, 같으면 최근 변경 순
-          </p>
+          {rows.length > 1 && (
+            <p className="inline-flex items-center gap-1 text-faint">
+              <ArrowDown className="size-3" aria-hidden="true" />
+              긴급도 높은 순, 같으면 최근 변경 순
+            </p>
+          )}
         </div>
         {rows.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-[14px] border border-dashed border-line bg-surface px-6 py-16 text-center">
-            <p className="text-[15px] font-medium">{filtered ? "조건에 맞는 티켓이 없어요" : `${VIEW_LABEL[view]}가 비어 있어요`}</p>
+            <p className="text-[15px] font-medium">{filtered ? "조건에 맞는 티켓이 없어요" : `${josa(VIEW_LABEL[view], "이/가")} 비어 있어요`}</p>
             <p className="max-w-sm text-sm text-muted-text">{filtered ? "필터를 줄여 보세요." : VIEW_HINT[view]}</p>
           </div>
         ) : (

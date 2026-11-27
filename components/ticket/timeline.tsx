@@ -1,4 +1,5 @@
 import { ExternalLink } from "lucide-react";
+import { josa } from "@/lib/ko";
 import type { TimelineItem } from "@/lib/tickets/timeline";
 import type { GroupOption, PersonOption, TicketRefView } from "@/lib/tickets/detail";
 import type { CloseReason, ReviewStage, TicketStatus, Urgency, WithdrawKind } from "@/lib/db/schema/tickets";
@@ -130,7 +131,7 @@ function eventRow(item: TimelineItem, ctx: Ctx): Row | null {
       );
     }
     case "confirmFixed":
-      return row("고쳐졌다고 확인했어요");
+      return row("해결됐다고 확인했어요");
     case "reopen":
       return row("아직이라고 다시 열었어요", reason);
     case "close": {
@@ -141,7 +142,7 @@ function eventRow(item: TimelineItem, ctx: Ctx): Row | null {
     case "reopenClosed":
       return row("종결된 티켓을 다시 열었어요", reason);
     case "urgency_changed":
-      return row(`긴급도를 ${URGENCY_LABEL[from.urgency as Urgency] ?? "?"} → ${URGENCY_LABEL[to.urgency as Urgency] ?? "?"}로 바꿨어요`);
+      return row(`긴급도를 ${URGENCY_LABEL[from.urgency as Urgency] ?? "?"} → ${josa(URGENCY_LABEL[to.urgency as Urgency] ?? "?", "으로/로")} 바꿨어요`);
     case "summary_edited":
       return row("정리본을 고쳤어요");
     case "target_recommendation": {

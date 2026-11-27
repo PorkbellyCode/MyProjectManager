@@ -170,7 +170,7 @@ test("③ 큐에이 '버전 비어 있음' → 해소 카드(정상 동작, 도�
   await expect(log.getByText("가져갔어요")).toBeVisible();
   await expect(log.getByText("요약 프롬프트 규칙을 확인하고 있어요")).toBeVisible();
   await expect(log.getByText("처리 완료했어요")).toBeVisible();
-  await expect(log.getByText("고쳐졌다고 확인했어요")).toBeVisible();
+  await expect(log.getByText("해결됐다고 확인했어요")).toBeVisible();
   await shot(lead.page, "task-17-timeline.png");
 
   await lead.page.goto(`/p/${projectId}/tickets?view=all`);
