@@ -172,3 +172,15 @@ test("좁은 화면: 상단 바는 한 줄이고, 메뉴 버튼 서랍과 프로
   await expect(page.getByRole("menuitem", { name: "새 프로젝트" })).toBeVisible();
   await expect(page.getByRole("menuitem", { name: readSeed().claudeProject.name, exact: true })).toBeVisible();
 });
+
+test("없는 주소는 한국어 404(상단 바 + 돌아가기)이고, 로그인한 채 /login에 가면 앱으로 간다", async ({ page }) => {
+  await login(page, "lead");
+  await page.goto("/nope");
+  await expect(page.getByRole("heading", { name: "페이지를 찾을 수 없어요" })).toBeVisible();
+  await expect(page.locator("header").first()).toBeVisible();
+  await page.getByRole("link", { name: "내 프로젝트로 돌아가기" }).click();
+  await expect(page).toHaveURL(/\/p\/.+\/tickets/);
+
+  await page.goto("/login");
+  await expect(page).toHaveURL(/\/p\/.+\/tickets/);
+});

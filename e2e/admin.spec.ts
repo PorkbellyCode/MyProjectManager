@@ -190,6 +190,6 @@ test("⑤ 요청자는 /admin이 403이고 /repo는 열리지만 '다시 분석'
   // 멤버가 아닌 프로젝트는 404.
   // (스트리밍 응답이라 상태 코드는 200으로 나가므로 화면으로 확인한다.)
   await page.goto(`/p/${newProjectId}/admin`);
-  await expect(page.getByText("This page could not be found.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "페이지를 찾을 수 없어요" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "권한이 없어요" })).toHaveCount(0);
 });

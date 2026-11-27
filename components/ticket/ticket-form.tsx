@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch, type Control } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { RadioGroup as RadioGroupPrimitive } from "radix-ui";
 import { Info, Loader2, Send } from "lucide-react";
@@ -92,21 +92,24 @@ export function TicketForm({
     >
       <div className="rise flex min-w-0 flex-col gap-6">
         <div className="flex flex-col gap-2">
-          <Label htmlFor="ticket-title" className="text-sm font-medium">
-            제목
-          </Label>
+          <div className="flex items-baseline justify-between gap-3">
+            <Label htmlFor="ticket-title" className="text-sm font-medium">
+              제목
+            </Label>
+            <TitleCounter control={form.control} />
+          </div>
           <Input
             id="ticket-title"
             autoFocus
             maxLength={TITLE_MAX}
             placeholder="무엇이 문제이거나 필요한지 한 줄로"
             aria-invalid={!!errors.title}
-            aria-describedby={errors.title ? "ticket-title-error" : undefined}
+            aria-describedby={errors.title ? "ticket-title-error ticket-title-count" : "ticket-title-count"}
             className="h-12 rounded-[10px] text-[17px] font-medium"
             {...form.register("title")}
           />
           {errors.title && (
-            <p id="ticket-title-error" className="text-sm text-destructive">
+            <p id="ticket-title-error" role="alert" className="text-sm text-destructive">
               {errors.title.message}
             </p>
           )}
@@ -221,5 +224,20 @@ export function TicketForm({
         </div>
       </aside>
     </form>
+  );
+}
+
+/** 제목 글자 수. 한도에 가까워지면 강조하고, 읽기 프로그램에는 한도 근처에서만 알린다. */
+function TitleCounter({ control }: { control: Control<TicketFormValues> }) {
+  const title = useWatch({ control, name: "title" }) ?? "";
+  const n = title.length;
+  const near = n >= TITLE_MAX - 10;
+  return (
+    <span id="ticket-title-count" className={cn("font-mono text-xs tabular-nums", near ? "text-destructive" : "text-faint")}>
+      {n}/{TITLE_MAX}
+      <span className="sr-only" aria-live="polite">
+        {near ? `${TITLE_MAX - n}자 남았어요` : ""}
+      </span>
+    </span>
   );
 }

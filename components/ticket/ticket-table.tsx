@@ -13,6 +13,7 @@ import { listStagger } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { StatusText } from "./status-badge";
 import { UrgencyBars } from "./urgency-bars";
+import { RememberListQuery } from "./back-to-list";
 
 type Props = {
   projectId: string;
@@ -182,6 +183,7 @@ export function TicketTable({ projectId, provider, view, views, counts, rows, to
 
   return (
     <div className="flex flex-col gap-6">
+      <RememberListQuery projectId={projectId} />
       <div className="flex flex-col gap-4">
         <div role="tablist" aria-label="보기" className="flex flex-wrap gap-1.5">
           {views.map((v, i) => {

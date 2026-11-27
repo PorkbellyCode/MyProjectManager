@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   createGroupAction,
@@ -24,12 +25,12 @@ function GroupFields({ form, idPrefix }: { form: ReturnType<typeof useForm<Group
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="flex flex-col gap-2">
         <Label htmlFor={`${idPrefix}-name`}>그룹 이름</Label>
-        <Input id={`${idPrefix}-name`} aria-invalid={!!errors.name} {...form.register("name")} />
+        <Input id={`${idPrefix}-name`} placeholder="예: 프론트엔드" aria-invalid={!!errors.name} {...form.register("name")} />
         {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor={`${idPrefix}-tags`}>레포 태그 (쉼표로 구분)</Label>
-        <Input id={`${idPrefix}-tags`} placeholder="web, ui" {...form.register("repoTags")} />
+        <Textarea id={`${idPrefix}-tags`} rows={2} placeholder="예: app/admin/, web, ui" className="min-h-10 resize-y font-mono text-[13px]" {...form.register("repoTags")} />
       </div>
       <div className="flex flex-col gap-2 sm:col-span-2">
         <Label htmlFor={`${idPrefix}-scope`}>담당 범위</Label>

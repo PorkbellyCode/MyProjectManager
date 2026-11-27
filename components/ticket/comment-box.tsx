@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Controller, useForm } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,8 @@ export function CommentBox({ projectId, ticketId }: { projectId: string; ticketI
   const { execute, pending } = useTicketAction();
   const form = useForm<{ body: string }>({ resolver: zodResolver(addCommentSchema), defaultValues: { body: "" } });
   const error = form.formState.errors.body?.message;
+  // 빈 댓글(공백·빈 문단만)은 보낼 수 없다.
+  const empty = !useWatch({ control: form.control, name: "body" })?.replace(/<[^>]*>|&nbsp;/g, "").trim();
 
   const onSubmit = form.handleSubmit((v) =>
     execute(() => addCommentAction(projectId, ticketId, v), { onSuccess: () => form.reset({ body: "" }) }),
@@ -39,9 +41,13 @@ export function CommentBox({ projectId, ticketId }: { projectId: string; ticketI
           />
         )}
       />
-      {error && <p className="text-sm text-destructive">{error}</p>}
+      {error && (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      )}
       <div className="flex justify-end">
-        <Button type="submit" variant="outline" className="rounded-[10px]" disabled={pending || uploading}>
+        <Button type="submit" variant="outline" className="rounded-[10px]" disabled={pending || uploading || empty}>
           {pending && <Loader2 className="animate-spin" aria-hidden />}
           댓글 남기기
         </Button>
