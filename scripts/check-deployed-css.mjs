@@ -28,10 +28,17 @@ try {
 }
 if (page.pathname === "/" || page.pathname === "") page.pathname = DEFAULT_PATH;
 
+/** 본문과 최종 주소(리다이렉트 뒤). 상대 경로는 최종 주소 기준으로 푼다. */
 async function get(url) {
   const res = await fetch(url, { redirect: "follow", headers: { "user-agent": "mpm-check-deploy" } });
+  if (res.status === 401 || res.status === 403) {
+    throw new Error(
+      `${url} → HTTP ${res.status}. 배포 보호(Vercel Deployment Protection)가 켜져 있을 수 있어요. ` +
+        "프로덕션 주소로 확인하거나, 보호 우회 토큰을 붙인 주소(?x-vercel-protection-bypass=…)를 주세요.",
+    );
+  }
   if (!res.ok) throw new Error(`${url} → HTTP ${res.status}`);
-  return res.text();
+  return { text: await res.text(), url: res.url || url };
 }
 
 /** <link ... rel="stylesheet" ... href="..."> 의 href(속성 순서 무관). */
@@ -46,14 +53,14 @@ function stylesheetHrefs(html, base) {
 }
 
 try {
-  const html = await get(page.href);
-  const hrefs = stylesheetHrefs(html, page.href);
+  const { text: html, url: finalUrl } = await get(page.href);
+  const hrefs = stylesheetHrefs(html, finalUrl);
   if (hrefs.length === 0) fail(`${page.href}에서 연결된 스타일시트를 찾지 못했어요.`);
-  const css = (await Promise.all(hrefs.map(get))).join("\n");
+  const css = (await Promise.all(hrefs.map(async (h) => (await get(h)).text))).join("\n");
 
   const missing = REQUIRED.filter((s) => !css.includes(s));
   const stale = FORBIDDEN.filter((s) => css.includes(s));
-  console.log(`페이지: ${page.href}`);
+  console.log(`페이지: ${finalUrl}`);
   for (const h of hrefs) console.log(`  스타일시트: ${h}`);
   if (missing.length || stale.length) {
     if (missing.length) console.error(`✗ 있어야 할 것이 빠졌어요: ${missing.join(", ")}`);

@@ -50,7 +50,7 @@ async function NotFoundBody() {
   }
   return (
     <AppShell>
-      <div className="mx-auto flex w-full max-w-[1440px] flex-1 items-center px-6 py-16 sm:px-12">
+      <div className="mx-auto flex w-full max-w-[1440px] flex-1 items-start px-6 pb-16 pt-12 sm:items-center sm:px-12 sm:py-16">
         <div className="rise">
           <Message />
         </div>

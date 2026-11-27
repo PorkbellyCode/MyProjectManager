@@ -79,6 +79,7 @@ function MemberRow({ projectId, m, self }: { projectId: string; m: AdminMember; 
         size="sm"
         disabled={pending || self}
         aria-label={`${m.name}님을 프로젝트에서 제외`}
+        title={self ? "나는 제외할 수 없어요" : `${m.name}님을 프로젝트에서 제외`}
         className="pointer-coarse:min-h-11"
         onClick={() => {
           if (window.confirm(`${m.name}님을 프로젝트에서 제외할까요? 맡고 있던 티켓은 리드 큐로 옮겨져요.`))

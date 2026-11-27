@@ -43,11 +43,12 @@ export function AdminMenu() {
     const list = listRef.current;
     const el = list?.querySelector<HTMLElement>('[aria-current="page"]');
     if (!list || !el || list.scrollWidth <= list.clientWidth) return;
-    list.scrollTo({ left: el.offsetLeft - 24, behavior: "smooth" });
+    // 앞쪽 여백(24px)과 흐림 가장자리만큼 띄워서 보이게 한다.
+    list.scrollTo({ left: Math.max(0, el.offsetLeft - 48), behavior: "smooth" });
   }, [pathname]);
   return (
     <nav aria-label="관리자 메뉴" className="-mx-6 min-w-0 sm:-mx-12 lg:sticky lg:top-[calc(var(--header-h)+24px)] lg:mx-0 lg:self-start">
-      <ul ref={listRef} className="relative flex snap-x gap-1 overflow-x-auto px-6 pb-1 [scrollbar-width:none] sm:px-12 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
+      <ul ref={listRef} className="relative flex snap-x scroll-px-6 max-lg:[mask-image:linear-gradient(to_right,transparent,#000_20px,#000_calc(100%-28px),transparent)] gap-1 overflow-x-auto px-6 pb-1 [scrollbar-width:none] sm:px-12 lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
         {ADMIN_SECTIONS.map((s) => {
           const href = `${base}/${s.key}`;
           const active = pathname === href || pathname.startsWith(`${href}/`);

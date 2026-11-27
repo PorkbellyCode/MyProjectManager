@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { Controller, useForm, useWatch } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
+import { useEditorState, type Editor } from "@tiptap/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -16,8 +17,9 @@ export function CommentBox({ projectId, ticketId }: { projectId: string; ticketI
   const { execute, pending } = useTicketAction();
   const form = useForm<{ body: string }>({ resolver: zodResolver(addCommentSchema), defaultValues: { body: "" } });
   const error = form.formState.errors.body?.message;
-  // 빈 댓글(공백·빈 문단만)은 보낼 수 없다.
-  const empty = !useWatch({ control: form.control, name: "body" })?.replace(/<[^>]*>|&nbsp;/g, "").trim();
+  // 빈 댓글(빈 문단·공백만)은 보낼 수 없다. 판단은 편집기 자신의 isEmpty에 맡긴다(이미지만 있어도 비어 있지 않다).
+  const [editor, setEditor] = useState<Editor | null>(null);
+  const empty = useEditorState({ editor, selector: ({ editor: e }) => (e ? e.isEmpty : true) }) ?? true;
 
   const onSubmit = form.handleSubmit((v) =>
     execute(() => addCommentAction(projectId, ticketId, v), { onSuccess: () => form.reset({ body: "" }) }),
@@ -38,6 +40,7 @@ export function CommentBox({ projectId, ticketId }: { projectId: string; ticketI
             minHeight={88}
             placeholder="댓글을 남기세요. 스크린샷은 붙여넣거나 끌어다 놓을 수 있어요."
             onUploadingChange={setUploading}
+            onReady={setEditor}
           />
         )}
       />
