@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { IBM_Plex_Sans_KR, JetBrains_Mono } from "next/font/google";
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { Toaster } from "@/components/ui/sonner";
@@ -23,6 +23,14 @@ const jetbrains = JetBrains_Mono({
 export const metadata: Metadata = {
   title: { default: "MyProjectManager", template: "%s · MyProjectManager" },
   description: "요청을 접수하고 AI가 1차 검토를 돕는 프로젝트 관리 도구",
+};
+
+// 모바일 브라우저 주소창 색 = 상단 바(surface) 색.
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#171615" },
+  ],
 };
 
 // 페인트 전에 테마를 정한다(깜빡임 방지). 쿠키는 savePreferencesAction이 사용자 설정과 같은 값으로 쓴다.

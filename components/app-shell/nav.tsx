@@ -30,7 +30,7 @@ export function Nav({ projectId, role }: { projectId: string; role: MemberRole }
             href={item.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "relative rounded-lg px-3 py-2 text-sm transition-colors duration-[120ms]",
+              "relative flex h-9 items-center whitespace-nowrap rounded-lg px-3 text-sm transition-colors duration-[120ms]",
               active ? "font-semibold text-text" : "text-muted-text hover:bg-sunken hover:text-text",
             )}
           >
@@ -39,7 +39,7 @@ export function Nav({ projectId, role }: { projectId: string; role: MemberRole }
             <span
               aria-hidden="true"
               className={cn(
-                "absolute inset-x-3 -bottom-[17px] h-0.5 rounded-full bg-brand transition-opacity duration-[120ms]",
+                "absolute inset-x-3 -bottom-3 h-0.5 rounded-full bg-brand transition-opacity duration-[120ms]",
                 active ? "opacity-100" : "opacity-0",
               )}
             />

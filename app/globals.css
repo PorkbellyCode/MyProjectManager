@@ -34,13 +34,10 @@
   --danger: #f87171;
 }
 
-/* 상단 바 높이(한 줄). sticky 요소의 top과 앵커 이동 여백(scroll-padding-top)이 같은 값을 쓴다. */
-:root {
-  --header-h: 61px;
-}
-
 /* 기본 강조색 = Claude. 셸이 프로젝트·사용자 설정에 맞춰 --accent-*, --ai-* 를 덮어쓴다. */
 :root {
+  /* 상단 바 높이(한 줄). sticky 요소의 top과 앵커 이동 여백(scroll-padding-top)이 같은 값을 쓴다. */
+  --header-h: 61px;
   --accent-l: #c2410c;
   --accent-d: #ef7d3c;
   --on-accent-l: #ffffff;

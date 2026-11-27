@@ -82,7 +82,7 @@ export async function AppShell({ projectId, children }: { projectId?: string; ch
 export function ShellSkeleton() {
   return (
     <div className="accent-scope flex min-h-screen flex-col bg-bg" aria-busy="true">
-      <div className="h-[69px] border-b border-line bg-surface" />
+      <div className="h-[var(--header-h)] border-b border-line bg-surface" />
     </div>
   );
 }
