@@ -106,7 +106,7 @@ test("① 요청자 → AI 검토(질문 2라운드, 추천 AI 기능) → 제�
   const resolve = ai.page.getByRole("dialog", { name: "처리 완료로 표시할까요?" });
   await resolve.getByRole("textbox", { name: "PR 번호" }).fill("42");
   await resolve.getByRole("button", { name: "처리 완료하기" }).click();
-  await expect(ticketStatus(ai.page)).toHaveText("확인 대기");
+  await expect(ticketStatus(ai.page)).toHaveText("처리 완료");
 
   await req.page.reload();
   const confirm = req.page.getByRole("region", { name: "처리 확인" });

@@ -39,7 +39,8 @@ function ThemeToggle({ pref }: { pref: ThemePreference }) {
     <button
       type="button"
       aria-label={resolved === "dark" ? "라이트 테마로 전환" : "다크 테마로 전환"}
-      title={resolved === "dark" ? "라이트 테마로 전환" : "다크 테마로 전환"}
+      // 라이트↔다크만 오간다(제품 결정 2-4). '시스템'은 프로필 메뉴에서 고른다.
+      title={`${resolved === "dark" ? "라이트" : "다크"} 테마로 전환 · 시스템 설정 따르기는 프로필 메뉴에서`}
       onClick={() => {
         applyTheme(next);
         save({ theme: next });

@@ -77,7 +77,7 @@ test("① 그룹 큐 가져가기 → 보류 → 재개 → 처리 완료(PR) �
   const resolve = fe.page.getByRole("dialog", { name: "처리 완료로 표시할까요?" });
   await resolve.getByRole("textbox", { name: "PR 번호" }).fill("12");
   await resolve.getByRole("button", { name: "처리 완료하기" }).click();
-  await expect(ticketStatus(fe.page)).toHaveText("확인 대기");
+  await expect(ticketStatus(fe.page)).toHaveText("처리 완료");
 
   // 요청자: 확인 대기 뷰에 있고, 아직이에요(사유)
   await req.page.goto(list("confirm"));
@@ -95,7 +95,7 @@ test("① 그룹 큐 가져가기 → 보류 → 재개 → 처리 완료(PR) �
   await expect(ticketStatus(fe.page)).toHaveText("진행중");
   await panel(fe.page).getByRole("button", { name: "처리 완료" }).click();
   await fe.page.getByRole("dialog", { name: "처리 완료로 표시할까요?" }).getByRole("button", { name: "처리 완료하기" }).click();
-  await expect(ticketStatus(fe.page)).toHaveText("확인 대기");
+  await expect(ticketStatus(fe.page)).toHaveText("처리 완료");
 
   // 요청자: 고쳐졌어요 → 종결(해결 확인)
   await req.page.reload();

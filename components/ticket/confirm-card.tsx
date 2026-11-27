@@ -13,7 +13,7 @@ import { useTicketAction } from "./use-ticket-action";
 
 const reopenForm = z.object({ reason: z.string().trim().min(1, "아직인 이유를 적어 주세요.").max(2000) });
 
-/** 확인 대기(resolved): 요청자가 "고쳐졌어요"(종결) 또는 "아직이에요"(사유 → 진행중). 처리 때 링크된 PR/커밋을 보인다. */
+/** 처리 완료(resolved), 요청자 확인 대기: 요청자가 "고쳐졌어요"(종결) 또는 "아직이에요"(사유 → 진행중). 처리 때 링크된 PR/커밋을 보인다. */
 export function ConfirmCard({
   projectId,
   ticketId,

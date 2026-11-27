@@ -261,9 +261,7 @@ export function TicketTable({ projectId, provider, view, views, counts, rows, to
                 목록을 불러오는 중이에요
               </>
             ) : (
-              <>
-                {VIEW_LABEL[view]} <span className="font-mono text-text">{total}</span>건
-              </>
+              <span>{countText(VIEW_LABEL[view], counts[view] ?? total, total, filtered)}</span>
             )}
           </p>
           {rows.length > 1 && (
@@ -328,6 +326,12 @@ export function TicketTable({ projectId, provider, view, views, counts, rows, to
       </div>
     </div>
   );
+}
+
+/** 목록 위 개수 한 줄. 필터를 걸면 "전체 7건 중 2건", 아니면 "전체 7건". */
+function countText(label: string, viewTotal: number, shown: number, filtered: boolean): string {
+  if (filtered && shown <= viewTotal) return `${label} ${viewTotal}건 중 ${shown}건`;
+  return `${label} ${shown}건`;
 }
 
 function FilterGroup<T extends string>({

@@ -10,7 +10,7 @@ export const STATUS_LABEL: Record<TicketStatus, string> = {
   assigned: "배정됨",
   in_progress: "진행중",
   on_hold: "보류",
-  resolved: "확인 대기",
+  resolved: "처리 완료",
   closed: "종결",
 };
 

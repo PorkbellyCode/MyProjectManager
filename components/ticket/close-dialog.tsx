@@ -25,7 +25,7 @@ const schema = z
 
 /**
  * 요청자의 회수(종결 사유 requester_withdrawn). 사유: "내 실수였어요" / "더 이상 필요 없어요" / 직접 입력.
- * 제출 이후 열린 상태(큐 대기·배정됨·진행중·보류·확인 대기)에서 쓸 수 있다.
+ * 제출 이후 열린 상태(큐 대기·배정됨·진행중·보류·처리 완료)에서 쓸 수 있다.
  */
 export function CloseDialog({ projectId, ticketId, version }: { projectId: string; ticketId: string; version: number }) {
   const [open, setOpen] = useState(false);
