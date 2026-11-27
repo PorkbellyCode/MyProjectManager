@@ -231,7 +231,7 @@ function judgmentRow(item: TimelineItem, ctx: Ctx): Row | null {
       <>
         {d.status === "failed" ? `${label} 판단에 실패했어요` : `${label} 판단을 마쳤어요`}
         {staff && (d.profileVersion || tokens) && (
-          <span className="font-mono text-xs text-faint">
+          <span className="ml-2 font-mono text-xs text-faint">
             {[d.profileVersion ? `지시사항 v${d.profileVersion}` : null, tokens].filter(Boolean).join(" · ")}
           </span>
         )}
