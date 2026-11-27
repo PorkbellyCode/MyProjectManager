@@ -112,7 +112,7 @@ export function TargetPicker({
             <ChevronsUpDown className="size-4 text-faint" aria-hidden />
           </button>
         </PopoverTrigger>
-        <PopoverContent id={listId} align="start" className="w-[var(--radix-popover-trigger-width)] min-w-[280px] p-0">
+        <PopoverContent id={listId} align="start" collisionPadding={{ top: 72, bottom: 12, left: 12, right: 12 }} className="w-[var(--radix-popover-trigger-width)] min-w-[280px] p-0">
           <Command>
             <CommandInput placeholder="사람이나 그룹 검색" aria-label="사람이나 그룹 검색" />
             <CommandList>

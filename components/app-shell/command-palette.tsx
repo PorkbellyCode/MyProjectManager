@@ -42,6 +42,8 @@ export function CommandPalette({
   const [query, setQuery] = useState("");
   const [hits, setHits] = useState<{ query: string; items: TicketHit[] }>({ query: "", items: [] });
   const latest = useRef("");
+  // 팔레트를 연 요소(검색 버튼 등). 닫으면 그리로 포커스를 돌려준다(Radix 트리거로 연 게 아니라 자동으로는 안 돌아온다).
+  const opener = useRef<HTMLElement | null>(null);
   const projectId = current?.id ?? null;
   const q = query.trim();
   const searching = !!projectId && q.length > 0 && hits.query !== q;
@@ -60,10 +62,16 @@ export function CommandPalette({
     const onKey = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
-        setOpen((o) => !o);
+        setOpen((o) => {
+          if (!o) opener.current = document.activeElement as HTMLElement | null;
+          return !o;
+        });
       }
     };
-    const onOpen = () => setOpen(true);
+    const onOpen = () => {
+      opener.current = document.activeElement as HTMLElement | null;
+      setOpen(true);
+    };
     window.addEventListener("keydown", onKey);
     window.addEventListener("mpm:open-palette", onOpen);
     // 단축키가 붙었다는 표시(E2E가 기다리는 신호).
@@ -81,7 +89,6 @@ export function CommandPalette({
         ? navItems(current.id, current.role).map((n) => ({
             id: `page-${n.label}`,
             label: n.label,
-            hint: n.label === "티켓" ? "목록" : undefined,
             href: n.href,
             keywords: [n.label],
             icon: ICONS[n.label],
@@ -103,6 +110,7 @@ export function CommandPalette({
   }, [current, projects]);
 
   function go(href: string) {
+    opener.current = null; // 다른 화면으로 가므로 포커스를 되돌리지 않는다.
     setOpen(false);
     setQuery("");
     router.push(href);
@@ -128,9 +136,17 @@ export function CommandPalette({
       title="명령 팔레트"
       description="이동할 페이지나 티켓을 검색해 고르세요."
       showCloseButton={false}
+      onCloseAutoFocus={(e) => {
+        const el = opener.current;
+        opener.current = null;
+        if (el && el !== document.body && el.isConnected) {
+          e.preventDefault();
+          el.focus();
+        }
+      }}
     >
       <CommandInput placeholder="이동할 곳을 검색하세요" value={query} onValueChange={setQuery} />
-      <CommandList>
+      <CommandList label="검색 결과">
         <CommandEmpty>{searching ? "찾는 중이에요" : "일치하는 항목이 없어요"}</CommandEmpty>
         {ticketItems.length > 0 && (
           <CommandGroup heading="티켓">
@@ -158,7 +174,7 @@ export function CommandPalette({
       <div className="flex items-center gap-2 border-t border-line px-3 py-2 text-xs text-faint">
         {searching ? <Loader2 className="size-3.5 animate-spin" aria-hidden="true" /> : <Search className="size-3.5" aria-hidden="true" />}
         <span>{projectId ? "#번호로 바로 가거나 제목으로 찾아요" : "프로젝트를 열면 티켓도 찾을 수 있어요"}</span>
-        <kbd className="ml-auto rounded border border-line px-1.5 font-mono text-[11px]">Esc</kbd>
+        <kbd className="ml-auto whitespace-nowrap rounded border border-line px-1.5 font-mono text-[11px] pointer-coarse:hidden">Esc</kbd>
       </div>
     </CommandDialog>
   );

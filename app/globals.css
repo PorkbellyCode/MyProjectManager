@@ -36,6 +36,8 @@
 
 /* 기본 강조색 = Claude. 셸이 프로젝트·사용자 설정에 맞춰 --accent-*, --ai-* 를 덮어쓴다. */
 :root {
+  /* 상단 바 높이(한 줄). sticky 요소의 top과 앵커 이동 여백(scroll-padding-top)이 같은 값을 쓴다. */
+  --header-h: 61px;
   --accent-l: #c2410c;
   --accent-d: #ef7d3c;
   --on-accent-l: #ffffff;
@@ -132,6 +134,8 @@
   }
   html {
     -webkit-text-size-adjust: 100%;
+    /* 앵커·포커스 이동 대상이 sticky 상단 바 밑에 숨지 않게 한다. */
+    scroll-padding-top: calc(var(--header-h) + 16px);
   }
   body {
     background: var(--bg);
@@ -234,7 +238,19 @@
 }
 .mpm-prose pre code { background: none; padding: 0; font-size: inherit; }
 .mpm-prose hr { border-color: var(--border); }
-.mpm-prose table { border-collapse: collapse; width: 100%; table-layout: fixed; }
+/*
+ * 표: 좁은 화면에서는 카드 안에서만 옆으로 밀린다(페이지 전체가 넘치지 않게).
+ * 편집기(Tiptap)는 .tableWrapper, 읽기 화면(MarkdownView)은 .mpm-table-scroll로 감싼다.
+ */
+.mpm-prose .tableWrapper,
+.mpm-prose .mpm-table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  -webkit-overflow-scrolling: touch;
+}
+.mpm-prose table { border-collapse: collapse; width: max(100%, 32rem) !important; table-layout: fixed; }
+.mpm-prose td code, .mpm-prose th code { overflow-wrap: normal; word-break: keep-all; }
 .mpm-prose th, .mpm-prose td { border: 1px solid var(--border); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
 .mpm-prose th { background: var(--sunken); font-weight: 600; }
 .mpm-prose p.is-editor-empty:first-child::before {

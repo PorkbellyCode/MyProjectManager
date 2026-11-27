@@ -93,6 +93,7 @@ E2E는 로컬 Postgres(`postgres://postgres@127.0.0.1:54329/postgres`, `E2E_PG_A
 - 파일은 비공개 Blob에 두고 앱 경로(`/api/files/...`)로 권한을 확인한 뒤 내려줘요. Vercel에서는 OIDC로 연결해요.
 - 업로드는 서버리스 본문 한도(4.5MB) 때문에 4MB로 제한해요.
 - 시연 데이터를 원격 DB에 넣으려면 위 주의사항을 확인한 뒤 `SEED_DEMO_CONFIRM=1 pnpm seed:demo`를 실행하세요.
+- 배포 후 확인: `pnpm check:deploy https://<배포 주소>`(또는 `DEPLOY_URL=… pnpm check:deploy`). 배포된 스타일시트에 디자인 토큰(`--surface`, `.bg-surface`)과 편집기 스타일(`.mpm-prose`)이 있고 create-next-app 기본값(`--font-geist-sans`)이 없는지 봐요. 실패하면 빌드 캐시 없이 다시 배포하세요.
 
 ## 개발 과정
 

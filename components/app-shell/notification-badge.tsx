@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Bell } from "lucide-react";
 import { toast } from "sonner";
 import { NOTIFICATIONS_CHANGED } from "@/lib/notifications/labels";
+import { cn } from "@/lib/utils";
 
 const POLL_MS = 30_000;
 
@@ -17,6 +18,7 @@ export function NotificationBadge({ initial }: { initial: number }) {
   const [count, setCount] = useState(initial);
   const [seen, setSeen] = useState(initial);
   const router = useRouter();
+  const active = usePathname() === "/notifications";
   const last = useRef(initial);
   if (seen !== initial) {
     // 서버 렌더가 새 개수를 내려보냈다(이동·새로 고침). 렌더 중 상태 맞추기(React 권장 패턴).
@@ -70,7 +72,12 @@ export function NotificationBadge({ initial }: { initial: number }) {
     <Link
       href="/notifications"
       aria-label={count > 0 ? `알림 ${count}건` : "알림"}
-      className="relative flex size-10 items-center justify-center rounded-lg border border-line text-text transition-[transform,background-color] duration-[120ms] hover:-translate-y-px hover:bg-sunken"
+      aria-current={active ? "page" : undefined}
+      title="알림"
+      className={cn(
+        "relative flex size-10 items-center pointer-coarse:size-11 justify-center rounded-lg border text-text transition-[transform,background-color] duration-[120ms] hover:-translate-y-px",
+        active ? "border-brand bg-brand-sel text-brand" : "border-line hover:bg-sunken",
+      )}
     >
       <Bell className="size-[18px]" aria-hidden="true" />
       {count > 0 && (

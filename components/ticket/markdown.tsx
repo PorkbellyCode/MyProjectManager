@@ -29,6 +29,11 @@ export function MarkdownView({ source, className }: { source: string; className?
             ) : (
               <span>{children}</span>
             ),
+          table: ({ children }) => (
+            <div className="mpm-table-scroll">
+              <table>{children}</table>
+            </div>
+          ),
           // eslint-disable-next-line @next/next/no-img-element -- 사용자가 올린 이미지(크기 모름)
           img: ({ src, alt }) => (typeof src === "string" && src ? <img src={src} alt={alt ?? ""} loading="lazy" /> : <span>{alt}</span>),
         }}

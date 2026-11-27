@@ -111,15 +111,18 @@ export async function cancelInvitationAction(projectId: string, input: unknown):
 }
 
 export async function changeMemberRoleAction(projectId: string, input: unknown): Promise<ActionResult> {
-  return run(projectId, async () => {
+  return run(projectId, async (lead) => {
     const d = parse(changeRoleSchema, input);
+    if (d.userId === lead.userId) throw new InputError("내 역할은 다른 리드가 바꿀 수 있어요.");
     await changeMemberRole(db, { projectId, userId: d.userId, role: d.role });
   });
 }
 
 export async function removeMemberAction(projectId: string, input: unknown): Promise<ActionResult> {
-  return run(projectId, async () => {
-    await removeMember(db, { projectId, userId: parse(removeMemberSchema, input).userId });
+  return run(projectId, async (lead) => {
+    const userId = parse(removeMemberSchema, input).userId;
+    if (userId === lead.userId) throw new InputError("나를 프로젝트에서 제외할 수는 없어요.");
+    await removeMember(db, { projectId, userId });
   });
 }
 

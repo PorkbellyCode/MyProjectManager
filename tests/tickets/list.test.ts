@@ -136,6 +136,15 @@ describe("ticket list views (PGlite)", () => {
     expect(r.counts).toMatchObject({ all: 7, lead: 1, confirm: 1 });
   });
 
+  test("탭 개수는 필터를 걸어도 뷰 전체 개수 그대로다(total만 필터 결과)", async () => {
+    const f = await listTickets(db, { projectId: w.project.id, userId: w.lead.id, view: "all", urgency: ["low"], status: ["queued"] });
+    expect(f.total).toBe(1);
+    expect(f.counts).toMatchObject({ all: 7, lead: 1, confirm: 1 });
+    const none = await listTickets(db, { projectId: w.project.id, userId: w.lead.id, view: "all", status: ["on_hold"] });
+    expect(none.total).toBe(0);
+    expect(none.counts.all).toBe(7);
+  });
+
   test("기본 뷰: 요청자는 내 요청, 개발자는 내 티켓", async () => {
     expect((await listTickets(db, { projectId: w.project.id, userId: w.req.id })).view).toBe("requested");
     expect((await listTickets(db, { projectId: w.project.id, userId: w.fe.id })).view).toBe("mine");

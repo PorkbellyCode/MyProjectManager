@@ -4,15 +4,17 @@ import { useRef, useTransition } from "react";
 import Link from "next/link";
 import { useQueryStates } from "nuqs";
 import { createColumnHelper, tableFeatures, useTable } from "@tanstack/react-table";
-import { Inbox, User, Users, X } from "lucide-react";
+import { ArrowDown, Inbox, Loader2, User, Users, X } from "lucide-react";
 import { aiScopeStyle, Sparkle } from "@/components/review/ai-frame";
 import type { AiNoteView, TicketRow } from "@/lib/tickets/list";
 import { CATEGORY_LABEL, STATUS_LABEL, ticketRef, URGENCY_LABEL, URGENCY_LEVEL } from "@/lib/tickets/labels";
 import { FILTER_STATUSES, FILTER_URGENCIES, LIST_CAP, listParsers, VIEW_HINT, VIEW_LABEL, type TicketView } from "@/lib/tickets/views";
 import { listStagger } from "@/lib/motion";
+import { josa } from "@/lib/ko";
 import { cn } from "@/lib/utils";
 import { StatusText } from "./status-badge";
 import { UrgencyBars } from "./urgency-bars";
+import { RememberListQuery } from "./back-to-list";
 
 type Props = {
   projectId: string;
@@ -39,17 +41,24 @@ const columns = helper.columns([
   helper.accessor("aiNote", { id: "ai", header: "AI 비고" }),
 ]);
 
-/** 좁은 화면에서는 덜 중요한 열을 숨긴다(제목 칸의 둘째 줄이 대신 보여 준다). */
+/**
+ * 좁은 화면에서는 덜 중요한 열을 숨기고, 숨긴 값은 제목 칸의 둘째 줄이 대신 보여 준다.
+ * md 미만은 표 대신 카드처럼 보인다: 한 줄에 번호·상태, 다음 줄에 제목과 요약(긴급도·카테고리·담당).
+ * md~lg는 담당 대상 칸 아래에 담당자를 함께 보이고, 늘 비어 있을 수 있는 AI 비고 칸은 xl부터 둔다.
+ */
 const COL_CLASS: Record<string, string> = {
-  number: "w-[72px]",
-  title: "min-w-[240px]",
+  number: "w-[72px] whitespace-nowrap max-md:block max-md:col-start-1 max-md:row-start-1",
+  title: "min-w-[240px] max-md:block max-md:col-span-2 max-md:row-start-2 max-md:min-w-0 max-md:pt-1.5!",
   category: "hidden xl:table-cell w-[96px]",
-  urgency: "w-[92px]",
-  status: "w-[120px]",
-  target: "hidden lg:table-cell w-[140px]",
+  urgency: "w-[92px] whitespace-nowrap max-md:hidden",
+  status: "w-[120px] whitespace-nowrap max-md:block max-md:w-auto max-md:col-start-2 max-md:row-start-1 max-md:justify-self-end",
+  target: "w-[150px] max-md:hidden",
   assignee: "hidden lg:table-cell w-[110px]",
-  ai: "hidden md:table-cell w-[150px]",
+  ai: "hidden xl:table-cell w-[150px]",
 };
+/** md 미만에서 표의 줄·칸을 카드 격자로 바꾸는 클래스. */
+const CARD_ROW = "max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto] max-md:items-center max-md:gap-x-3 max-md:px-5 max-md:py-4";
+const CARD_CELL = "max-md:p-0!";
 
 const TARGET_ICON = { lead: Inbox, group: Users, user: User } as const;
 
@@ -82,11 +91,19 @@ function renderCell(id: string, r: TicketRow, projectId: string, provider: strin
             {r.title}
           </Link>
           <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-xs text-muted-text">
+            <span className="inline-flex items-center gap-1.5 md:hidden" title={`긴급도 ${URGENCY_LABEL[r.urgency]}`}>
+              <UrgencyBars level={URGENCY_LEVEL[r.urgency]} className="h-3" />
+              {URGENCY_LABEL[r.urgency]}
+            </span>
             <span>{r.authorName}</span>
             <span className="xl:hidden">{CATEGORY_LABEL[r.category]}</span>
-            <span className="lg:hidden">{r.target.label}</span>
+            <span className="md:hidden">
+              <span className="sr-only">담당 </span>
+              {r.target.label}
+              {r.assigneeName && ` · ${r.assigneeName}`}
+            </span>
             {r.aiNote && (
-              <span className="md:hidden">
+              <span className="xl:hidden">
                 <AiNoteChip note={r.aiNote} provider={provider} />
               </span>
             )}
@@ -107,16 +124,34 @@ function renderCell(id: string, r: TicketRow, projectId: string, provider: strin
     case "target": {
       const Icon = TARGET_ICON[r.target.kind];
       return (
-        <span className="inline-flex min-w-0 items-center gap-1.5 text-sm text-muted-text">
-          <Icon className="size-3.5 shrink-0 text-faint" aria-hidden />
-          <span className="truncate">{r.target.label}</span>
+        <span className="flex min-w-0 flex-col gap-0.5">
+          <span className="inline-flex min-w-0 items-center gap-1.5 text-sm text-muted-text">
+            <Icon className="size-3.5 shrink-0 text-faint" aria-hidden />
+            <span className="truncate">{r.target.label}</span>
+          </span>
+          {/* 담당자 칸이 숨는 폭(md~lg)에서는 여기서 함께 보인다. */}
+          <span className="truncate pl-5 text-xs text-faint lg:hidden">{r.assigneeName ? `담당 ${r.assigneeName}` : "담당자 없음"}</span>
         </span>
       );
     }
     case "assignee":
-      return r.assigneeName ? <span className="text-sm">{r.assigneeName}</span> : <span className="text-sm text-faint">—</span>;
+      return r.assigneeName ? (
+        <span className="text-sm">{r.assigneeName}</span>
+      ) : (
+        <span className="text-sm text-faint">
+          <span aria-hidden="true">—</span>
+          <span className="sr-only">없음</span>
+        </span>
+      );
     case "ai":
-      return r.aiNote ? <AiNoteChip note={r.aiNote} provider={provider} /> : null;
+      return r.aiNote ? (
+        <AiNoteChip note={r.aiNote} provider={provider} />
+      ) : (
+        <span className="text-sm text-faint">
+          <span aria-hidden="true">—</span>
+          <span className="sr-only">없음</span>
+        </span>
+      );
   }
   return null;
 }
@@ -149,6 +184,7 @@ export function TicketTable({ projectId, provider, view, views, counts, rows, to
 
   return (
     <div className="flex flex-col gap-6">
+      <RememberListQuery projectId={projectId} />
       <div className="flex flex-col gap-4">
         <div role="tablist" aria-label="보기" className="flex flex-wrap gap-1.5">
           {views.map((v, i) => {
@@ -169,7 +205,7 @@ export function TicketTable({ projectId, provider, view, views, counts, rows, to
                 onKeyDown={(e) => onTabKey(e, i)}
                 onClick={() => void setParams({ view: v })}
                 className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] transition-[transform,background-color,color,border-color] duration-[120ms] hover:-translate-y-px focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40",
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[13px] pointer-coarse:min-h-11 pointer-coarse:px-4 transition-[transform,background-color,color,border-color] duration-[120ms] hover:-translate-y-px focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40",
                   selected ? "border-text bg-text text-bg" : "border-line text-muted-text hover:bg-sunken",
                 )}
               >
@@ -201,7 +237,7 @@ export function TicketTable({ projectId, provider, view, views, counts, rows, to
             <button
               type="button"
               onClick={() => void setParams({ urgency: null, status: null })}
-              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] text-muted-text transition-colors hover:bg-sunken hover:text-text"
+              className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[13px] text-muted-text pointer-coarse:min-h-11 transition-colors hover:bg-sunken hover:text-text"
             >
               <X className="size-3.5" aria-hidden />
               필터 지우기
@@ -217,37 +253,62 @@ export function TicketTable({ projectId, provider, view, views, counts, rows, to
         aria-busy={pending}
         className={cn("transition-opacity duration-200", pending && "opacity-60")}
       >
-        <p className="sr-only" aria-live="polite">
-          {pending ? "목록을 불러오는 중이에요" : `${VIEW_LABEL[view]} ${total}건`}
-        </p>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[13px] text-muted-text">
+          <p aria-live="polite" className="inline-flex items-center gap-2">
+            {pending ? (
+              <>
+                <Loader2 className="size-3.5 animate-spin text-brand" aria-hidden="true" />
+                목록을 불러오는 중이에요
+              </>
+            ) : (
+              <span>{countText(VIEW_LABEL[view], counts[view] ?? total, total, filtered)}</span>
+            )}
+          </p>
+          {rows.length > 1 && (
+            <p className="inline-flex items-center gap-1 text-faint">
+              <ArrowDown className="size-3" aria-hidden="true" />
+              긴급도 높은 순, 같으면 최근 변경 순
+            </p>
+          )}
+        </div>
         {rows.length === 0 ? (
           <div className="flex flex-col items-center gap-2 rounded-[14px] border border-dashed border-line bg-surface px-6 py-16 text-center">
-            <p className="text-[15px] font-medium">{filtered ? "조건에 맞는 티켓이 없어요" : `${VIEW_LABEL[view]}가 비어 있어요`}</p>
+            <p className="text-[15px] font-medium">{filtered ? "조건에 맞는 티켓이 없어요" : `${josa(VIEW_LABEL[view], "이/가")} 비어 있어요`}</p>
             <p className="max-w-sm text-sm text-muted-text">{filtered ? "필터를 줄여 보세요." : VIEW_HINT[view]}</p>
           </div>
         ) : (
           <div className="overflow-x-auto rounded-[14px] border border-line bg-surface">
-            <table aria-label="티켓 목록" className="w-full border-collapse text-left">
-              <thead>
+            <table aria-label="티켓 목록" className="w-full border-collapse text-left max-md:block">
+              <thead className="max-md:hidden">
                 {table.getHeaderGroups().map((g) => (
                   <tr key={g.id} className="border-b border-line">
                     {g.headers.map((h) => (
-                      <th key={h.id} scope="col" className={cn("px-4 py-3 text-xs font-medium text-faint first:pl-6 last:pr-6", COL_CLASS[h.column.id])}>
-                        {h.isPlaceholder ? null : <table.FlexRender header={h} />}
+                      <th
+                        key={h.id}
+                        scope="col"
+                        aria-sort={h.column.id === "urgency" ? "descending" : undefined}
+                        className={cn("px-4 py-3 text-xs font-medium text-faint first:pl-6 last:pr-6", COL_CLASS[h.column.id])}
+                      >
+                        {h.isPlaceholder ? null : (
+                          <span className="inline-flex items-center gap-1">
+                            <table.FlexRender header={h} />
+                            {h.column.id === "urgency" && <ArrowDown className="size-3" aria-hidden="true" />}
+                          </span>
+                        )}
                       </th>
                     ))}
                   </tr>
                 ))}
               </thead>
-              <tbody>
+              <tbody className="max-md:block">
                 {table.getRowModel().rows.map((row, i) => (
                   <tr
                     key={row.id}
-                    className="rise relative border-b border-line transition-colors duration-150 last:border-b-0 hover:bg-sunken/60"
+                    className={cn("rise relative border-b border-line transition-colors duration-150 last:border-b-0 hover:bg-sunken/60", CARD_ROW)}
                     style={listStagger(i, 0.03)}
                   >
                     {row.getAllCells().map((cell) => (
-                      <td key={cell.id} className={cn("px-4 py-4 align-top first:pl-6 last:pr-6", COL_CLASS[cell.column.id])}>
+                      <td key={cell.id} className={cn("px-4 py-4 align-top first:pl-6 last:pr-6", CARD_CELL, COL_CLASS[cell.column.id])}>
                         {renderCell(cell.column.id, row.original, projectId, provider)}
                       </td>
                     ))}
@@ -265,6 +326,12 @@ export function TicketTable({ projectId, provider, view, views, counts, rows, to
       </div>
     </div>
   );
+}
+
+/** 목록 위 개수 한 줄. 필터를 걸면 "전체 7건 중 2건", 아니면 "전체 7건". */
+function countText(label: string, viewTotal: number, shown: number, filtered: boolean): string {
+  if (filtered && shown <= viewTotal) return `${label} ${viewTotal}건 중 ${shown}건`;
+  return `${label} ${shown}건`;
 }
 
 function FilterGroup<T extends string>({
@@ -292,7 +359,7 @@ function FilterGroup<T extends string>({
             aria-pressed={on}
             onClick={() => onToggle(o.value)}
             className={cn(
-              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] transition-[transform,background-color,border-color,color] duration-[120ms] hover:-translate-y-px focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40",
+              "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[13px] pointer-coarse:min-h-11 pointer-coarse:px-3.5 transition-[transform,background-color,border-color,color] duration-[120ms] hover:-translate-y-px focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40",
               on ? "border-brand bg-brand/10 text-text" : "border-line text-muted-text hover:bg-sunken",
             )}
           >

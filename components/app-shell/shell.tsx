@@ -51,7 +51,7 @@ export async function AppShell({ projectId, children }: { projectId?: string; ch
       <style id="mpm-accent" dangerouslySetInnerHTML={{ __html: styleText }} />
       <a
         href="#main"
-        className="sr-only rounded-lg bg-surface px-3 py-2 text-sm focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50"
+        className="sr-only rounded-lg border border-brand bg-surface text-sm font-medium text-text focus:not-sr-only focus:fixed focus:left-4 focus:top-2.5 focus:z-50 focus:px-4 focus:py-2"
       >
         본문으로 건너뛰기
       </a>
@@ -82,7 +82,7 @@ export async function AppShell({ projectId, children }: { projectId?: string; ch
 export function ShellSkeleton() {
   return (
     <div className="accent-scope flex min-h-screen flex-col bg-bg" aria-busy="true">
-      <div className="h-[69px] border-b border-line bg-surface" />
+      <div className="h-[var(--header-h)] border-b border-line bg-surface" />
     </div>
   );
 }

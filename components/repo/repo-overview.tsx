@@ -40,7 +40,7 @@ export function RepoOverview({ projectId, data, canEdit }: { projectId: string; 
         )}
         {failedNewer && (
           <p role="alert" className="text-destructive">
-            마지막 분석이 실패했어요: {repoFailureText(latest.error)}
+            마지막 분석이 실패했어요: {repoFailureText(latest.error)}.
           </p>
         )}
         {good ? (

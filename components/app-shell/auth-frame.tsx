@@ -23,3 +23,21 @@ export function AuthFrame({ title, description, children }: { title: string; des
     </main>
   );
 }
+
+/** 로그인 확인 중 자리표시: 같은 틀에 입력란 자리만 잡아 둔다(레이아웃이 흔들리지 않게). */
+export function AuthFrameSkeleton({ title, description }: { title: string; description?: string }) {
+  return (
+    <AuthFrame title={title} description={description}>
+      <div aria-busy="true" className="flex flex-col gap-5">
+        {[0, 1].map((i) => (
+          <div key={i} className="flex flex-col gap-2">
+            <div className="h-4 w-16 animate-pulse rounded bg-sunken" />
+            <div className="h-10 animate-pulse rounded-lg bg-sunken" />
+          </div>
+        ))}
+        <div className="h-10 animate-pulse rounded-lg bg-sunken" />
+        <span className="sr-only">불러오는 중이에요</span>
+      </div>
+    </AuthFrame>
+  );
+}

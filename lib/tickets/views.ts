@@ -39,7 +39,7 @@ export const defaultView = (role: MemberRole): TicketView => (role === "requeste
 
 /** 목록 필터에 쓰는 상태(작성·검토 단계는 뺀다). */
 export const FILTER_STATUSES = ["queued", "assigned", "in_progress", "on_hold", "resolved", "closed"] as const satisfies readonly TicketStatus[];
-export const FILTER_URGENCIES = ["urgent", "high", "normal", "low"] as const satisfies readonly Urgency[];
+export const FILTER_URGENCIES = ["low", "normal", "high", "urgent"] as const satisfies readonly Urgency[];
 
 export const listParsers = {
   view: parseAsStringLiteral(VIEWS),

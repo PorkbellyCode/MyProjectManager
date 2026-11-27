@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
   createGroupAction,
@@ -24,12 +25,12 @@ function GroupFields({ form, idPrefix }: { form: ReturnType<typeof useForm<Group
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="flex flex-col gap-2">
         <Label htmlFor={`${idPrefix}-name`}>그룹 이름</Label>
-        <Input id={`${idPrefix}-name`} aria-invalid={!!errors.name} {...form.register("name")} />
+        <Input id={`${idPrefix}-name`} placeholder="예: 프론트엔드" aria-invalid={!!errors.name} {...form.register("name")} />
         {errors.name && <p className="text-sm text-destructive">{errors.name.message}</p>}
       </div>
       <div className="flex flex-col gap-2">
         <Label htmlFor={`${idPrefix}-tags`}>레포 태그 (쉼표로 구분)</Label>
-        <Input id={`${idPrefix}-tags`} placeholder="web, ui" {...form.register("repoTags")} />
+        <Textarea id={`${idPrefix}-tags`} rows={2} placeholder="예: app/admin/, web, ui" className="min-h-10 resize-y font-mono text-[13px]" {...form.register("repoTags")} />
       </div>
       <div className="flex flex-col gap-2 sm:col-span-2">
         <Label htmlFor={`${idPrefix}-scope`}>담당 범위</Label>
@@ -85,8 +86,8 @@ function GroupCard({ projectId, group, staff }: { projectId: string; group: Admi
           <ul className="flex flex-wrap gap-2">
             {staff.map((m) => (
               <li key={m.userId}>
-                <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line px-3 py-1.5 text-sm has-[:checked]:border-brand has-[:checked]:bg-brand-sel">
-                  <input type="checkbox" className="accent-[var(--brand)]" checked={picked.includes(m.userId)} onChange={() => toggle(m.userId)} />
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line px-3 py-1.5 text-sm pointer-coarse:min-h-11 pointer-coarse:px-4 has-[:checked]:border-brand has-[:checked]:bg-brand-sel">
+                  <input type="checkbox" className="size-4 accent-[var(--brand)] pointer-coarse:size-5" checked={picked.includes(m.userId)} onChange={() => toggle(m.userId)} />
                   {m.name}
                   <span className="text-xs text-muted-text">{ROLE_LABEL[m.role]}</span>
                 </label>
@@ -122,8 +123,8 @@ export function GroupsSection({ projectId, groups, members }: { projectId: strin
 
   return (
     <section aria-labelledby="groups-h" className="flex flex-col gap-4">
-      <h2 id="groups-h" className="text-[17px] font-semibold">
-        그룹과 그룹원
+      <h2 id="groups-h" className="text-xl font-semibold leading-[1.4]">
+        그룹
       </h2>
       <p className="max-w-prose text-sm leading-[1.75] text-muted-text">
         그룹은 티켓을 받는 큐예요. 그룹원은 개발자나 리드만 될 수 있고, 요청자로 바꾸면 그룹에서 빠져요.

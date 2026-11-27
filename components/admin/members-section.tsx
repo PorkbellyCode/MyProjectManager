@@ -3,7 +3,7 @@
 import { useState, useSyncExternalStore } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Copy, Loader2, UserPlus } from "lucide-react";
+import { Copy, Loader2, UserMinus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,9 +26,9 @@ export const ROLE_LABEL: Record<MemberRole, string> = { requester: "요청자", 
 const ROLES: MemberRole[] = ["requester", "developer", "lead"];
 
 export const selectClass =
-  "h-9 rounded-lg border border-line bg-surface px-2.5 text-sm outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:opacity-50";
+  "h-9 rounded-lg border border-line bg-surface px-2.5 text-sm outline-none pointer-coarse:h-11 focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:opacity-50";
 
-function MemberRow({ projectId, m }: { projectId: string; m: AdminMember }) {
+function MemberRow({ projectId, m, self }: { projectId: string; m: AdminMember; self: boolean }) {
   const { execute, pending, error } = useTicketAction();
   // 고른 값은 액션이 도는 동안 그대로 보여주고, 실패했을 때만 서버 값으로 되돌린다.
   const [value, setValue] = useState<MemberRole>(m.role);
@@ -37,8 +37,14 @@ function MemberRow({ projectId, m }: { projectId: string; m: AdminMember }) {
   return (
     <li className="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3" data-member={m.email}>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-[15px] font-medium">{m.name}</p>
-        <p className="truncate text-sm text-muted-text">{m.email}</p>
+        <p className="truncate text-[15px] font-medium">
+          {m.name}
+          {self && <span className="ml-1.5 text-sm font-normal text-faint">(나)</span>}
+        </p>
+        <p className="truncate text-sm text-muted-text" title={m.email}>
+          {m.email}
+        </p>
+        {self && <p className="text-xs text-faint">내 역할과 참여는 다른 리드가 바꿀 수 있어요.</p>}
         {error && (
           <p role="alert" className="text-sm text-destructive">
             {error}
@@ -48,7 +54,7 @@ function MemberRow({ projectId, m }: { projectId: string; m: AdminMember }) {
       <select
         aria-label={`${m.name} 역할`}
         value={value}
-        disabled={pending}
+        disabled={pending || self}
         data-hydrated={hydrated || undefined}
         onChange={(e) => {
           const next = e.target.value as MemberRole;
@@ -71,14 +77,17 @@ function MemberRow({ projectId, m }: { projectId: string; m: AdminMember }) {
         type="button"
         variant="outline"
         size="sm"
-        disabled={pending}
-        aria-label={`${m.name} 내보내기`}
+        disabled={pending || self}
+        aria-label={`${m.name}님을 프로젝트에서 제외`}
+        title={self ? "나는 제외할 수 없어요" : `${m.name}님을 프로젝트에서 제외`}
+        className="pointer-coarse:min-h-11"
         onClick={() => {
-          if (window.confirm(`${m.name}님을 프로젝트에서 내보낼까요? 맡고 있던 티켓은 리드 큐로 옮겨져요.`))
-            void execute(() => removeMemberAction(projectId, { userId: m.userId }), { success: "내보냈어요." });
+          if (window.confirm(`${m.name}님을 프로젝트에서 제외할까요? 맡고 있던 티켓은 리드 큐로 옮겨져요.`))
+            void execute(() => removeMemberAction(projectId, { userId: m.userId }), { success: "프로젝트에서 제외했어요." });
         }}
       >
-        내보내기
+        <UserMinus aria-hidden="true" />
+        <span className="max-sm:sr-only">프로젝트에서 제외</span>
       </Button>
     </li>
   );
@@ -86,7 +95,17 @@ function MemberRow({ projectId, m }: { projectId: string; m: AdminMember }) {
 
 type InviteValues = z.infer<typeof inviteSchema>;
 
-export function MembersSection({ projectId, members, invitations }: { projectId: string; members: AdminMember[]; invitations: AdminInvitation[] }) {
+export function MembersSection({
+  projectId,
+  members,
+  invitations,
+  currentUserId,
+}: {
+  projectId: string;
+  members: AdminMember[];
+  invitations: AdminInvitation[];
+  currentUserId: string;
+}) {
   const { execute, pending, error } = useTicketAction();
   const cancel = useTicketAction();
   const form = useForm<InviteValues>({ resolver: zodResolver(inviteSchema), defaultValues: { email: "", role: "requester" } });
@@ -99,19 +118,22 @@ export function MembersSection({ projectId, members, invitations }: { projectId:
 
   return (
     <section aria-labelledby="members-h" className="flex flex-col gap-4">
-      <h2 id="members-h" className="text-[17px] font-semibold">
-        멤버
-      </h2>
+      <div className="flex flex-col gap-1.5">
+        <h2 id="members-h" className="text-xl font-semibold leading-[1.4]">
+          멤버·초대
+        </h2>
+        <p className="max-w-prose text-sm leading-[1.75] text-muted-text">역할을 바꾸거나 이메일로 초대 링크를 만들어요.</p>
+      </div>
       <ul aria-label="멤버 목록" className="divide-y divide-line rounded-[14px] border border-line bg-surface">
         {members.map((m) => (
-          <MemberRow key={`${m.userId}:${m.role}`} projectId={projectId} m={m} />
+          <MemberRow key={`${m.userId}:${m.role}`} projectId={projectId} m={m} self={m.userId === currentUserId} />
         ))}
       </ul>
 
       <form noValidate onSubmit={submit} className="flex flex-wrap items-end gap-3 rounded-[14px] border border-line bg-surface p-4" aria-label="멤버 초대">
         <div className="flex min-w-[240px] flex-1 flex-col gap-2">
           <Label htmlFor="invite-email">초대할 이메일</Label>
-          <Input id="invite-email" type="email" aria-invalid={!!errors.email} {...form.register("email")} />
+          <Input id="invite-email" type="email" placeholder="name@company.com" autoComplete="off" aria-invalid={!!errors.email} {...form.register("email")} />
           {errors.email && <p className="text-sm text-destructive">{errors.email.message}</p>}
         </div>
         <div className="flex flex-col gap-2">

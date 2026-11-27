@@ -146,3 +146,41 @@ test("스크린샷: 라이트와 다크 셸", async ({ page }) => {
   await page.waitForTimeout(700);
   await page.screenshot({ path: path.join(SCREENS, "task-12-dark.png") });
 });
+
+test("좁은 화면: 상단 바는 한 줄이고, 메뉴 버튼 서랍과 프로젝트 전환(새 프로젝트)이 있다", async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await login(page, "lead");
+  const header = page.locator("header").first();
+  expect((await header.boundingBox())!.height).toBeLessThanOrEqual(64);
+  await expect(page.getByRole("navigation", { name: "프로젝트 메뉴", exact: true })).toBeHidden();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(375);
+
+  // 검색은 아이콘 버튼(접근성 이름 있음)
+  await page.getByRole("button", { name: "이동하거나 검색하기" }).click();
+  await expect(page.getByPlaceholder("이동할 곳을 검색하세요")).toBeVisible();
+  await page.keyboard.press("Escape");
+  // 닫으면 포커스가 검색 버튼으로 돌아온다(5-3).
+  await expect(page.getByRole("button", { name: "이동하거나 검색하기" })).toBeFocused();
+
+  await page.getByRole("button", { name: "메뉴 열기" }).click();
+  const drawer = page.getByRole("dialog", { name: "MyProjectManager" });
+  await drawer.getByRole("link", { name: "레포" }).click();
+  await expect(page).toHaveURL(/\/repo$/);
+  await expect(drawer).toBeHidden();
+
+  await page.getByRole("button", { name: /프로젝트 전환/ }).click();
+  await expect(page.getByRole("menuitem", { name: "새 프로젝트" })).toBeVisible();
+  await expect(page.getByRole("menuitem", { name: readSeed().claudeProject.name, exact: true })).toBeVisible();
+});
+
+test("없는 주소는 한국어 404(상단 바 + 돌아가기)이고, 로그인한 채 /login에 가면 앱으로 간다", async ({ page }) => {
+  await login(page, "lead");
+  await page.goto("/nope");
+  await expect(page.getByRole("heading", { name: "페이지를 찾을 수 없어요" })).toBeVisible();
+  await expect(page.locator("header").first()).toBeVisible();
+  await page.getByRole("link", { name: "내 프로젝트로 돌아가기" }).click();
+  await expect(page).toHaveURL(/\/p\/.+\/tickets/);
+
+  await page.goto("/login");
+  await expect(page).toHaveURL(/\/p\/.+\/tickets/);
+});

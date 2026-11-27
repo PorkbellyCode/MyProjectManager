@@ -52,7 +52,7 @@ test("① 리드가 새 프로젝트를 만들면 레포 개요로 가서 분석
 
 test("② 리드가 지시사항을 고쳐 저장하면 버전 목록에 v2가 생긴다", async ({ page }) => {
   await login(page, "lead");
-  await page.goto(`/p/${newProjectId}/admin?tab=agents`);
+  await page.goto(`/p/${newProjectId}/admin/agents`);
   const versions = page.getByRole("list", { name: "해소 검사 버전 목록" });
   await expect(versions.getByText("v1")).toBeVisible();
 
@@ -70,7 +70,7 @@ test("② 리드가 지시사항을 고쳐 저장하면 버전 목록에 v2가 �
 test("③ 그룹 '프론트'를 만들고 개발자를 지정하면 새 티켓의 대상 선택에 보인다", async ({ page }) => {
   const seed = readSeed();
   await login(page, "lead");
-  await page.goto(`/p/${seed.claudeProject.id}/admin?tab=settings`);
+  await page.goto(`/p/${seed.claudeProject.id}/admin/groups`);
   const form = page.getByRole("form", { name: "새 그룹" });
   await form.getByLabel("그룹 이름").fill("프론트");
   await form.getByLabel("담당 범위").fill("화면과 입력");
@@ -93,9 +93,17 @@ test("③ 그룹 '프론트'를 만들고 개발자를 지정하면 새 티켓�
 test("④ 이메일로 초대하면 다른 브라우저로 가입해 요청자로 들어오고, 리드가 개발자로 바꾼다", async ({ page, browser }) => {
   const seed = readSeed();
   await login(page, "lead");
-  await page.goto(`/p/${seed.claudeProject.id}/admin?tab=settings`);
+  await page.goto(`/p/${seed.claudeProject.id}/admin/settings`);
   await expect(page.getByText("AI 키 등록은 3차에 열려요. 지금은 시연 프로젝트에서만 AI가 동작해요.")).toBeVisible();
   await expect(page.getByTestId("token-status")).toHaveText("없음");
+
+  // 멤버·초대 섹션으로 옮긴다. 내 행은 (나)로 표시되고 역할 변경·제외가 막혀 있다.
+  await page.getByRole("navigation", { name: "관리자 메뉴" }).getByRole("link", { name: "멤버·초대" }).click();
+  await page.waitForURL(/\/admin\/members$/);
+  const me = page.locator(`[data-member="${seed.lead.email}"]`);
+  await expect(me).toContainText("(나)");
+  await expect(page.getByLabel(`${seed.lead.name} 역할`)).toBeDisabled();
+  await expect(me.getByRole("button", { name: /프로젝트에서 제외/ })).toBeDisabled();
 
   await page.getByLabel("초대할 이메일").fill("newbie@e2e.test");
   await page.getByLabel("역할", { exact: true }).selectOption("requester");
@@ -138,6 +146,36 @@ test("④ 이메일로 초대하면 다른 브라우저로 가입해 요청자�
   await shot(page, "task-16-admin-settings.png");
 });
 
+test("⑥ 관리자는 왼쪽 메뉴로 섹션을 나눠 보고, 예전 ?tab= 주소도 해당 섹션으로 간다", async ({ page }) => {
+  const seed = readSeed();
+  await login(page, "lead");
+  await page.goto(`/p/${seed.claudeProject.id}/admin`);
+  await page.waitForURL(/\/admin\/domain$/);
+  const menu = page.getByRole("navigation", { name: "관리자 메뉴" });
+  await expect(menu.getByRole("link")).toHaveText(["도메인 지식", "에이전트", "멤버·초대", "그룹", "프로젝트 설정"]);
+  await expect(menu.getByRole("link", { name: "도메인 지식" })).toHaveAttribute("aria-current", "page");
+  await expect(page.getByRole("heading", { name: "도메인 지식", level: 2 })).toBeVisible();
+
+  // 섹션은 자기 데이터만 그린다: 그룹 화면에는 멤버 초대 폼이 없다.
+  await menu.getByRole("link", { name: "그룹" }).click();
+  await page.waitForURL(/\/admin\/groups$/);
+  await expect(page.getByRole("heading", { name: "그룹", level: 2 })).toBeVisible();
+  await expect(page.getByRole("form", { name: "멤버 초대" })).toHaveCount(0);
+  await expect(menu.getByRole("link", { name: "그룹" })).toHaveAttribute("aria-current", "page");
+  await expect(page).toHaveTitle("그룹 · 관리자 · MyProjectManager");
+
+  await page.goto(`/p/${seed.claudeProject.id}/admin?tab=settings`);
+  await page.waitForURL(/\/admin\/members$/);
+  await page.goto(`/p/${seed.claudeProject.id}/admin?tab=agents`);
+  await page.waitForURL(/\/admin\/agents$/);
+
+  // 좁은 화면에서는 메뉴가 가로로 한 줄이고 페이지 전체가 옆으로 넘치지 않는다.
+  await page.setViewportSize({ width: 375, height: 800 });
+  await page.goto(`/p/${seed.claudeProject.id}/admin/domain`);
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
 test("⑤ 요청자는 /admin이 403이고 /repo는 열리지만 '다시 분석'은 없다", async ({ page }) => {
   const seed = readSeed();
   await login(page, "req");
@@ -152,6 +190,6 @@ test("⑤ 요청자는 /admin이 403이고 /repo는 열리지만 '다시 분석'
   // 멤버가 아닌 프로젝트는 404.
   // (스트리밍 응답이라 상태 코드는 200으로 나가므로 화면으로 확인한다.)
   await page.goto(`/p/${newProjectId}/admin`);
-  await expect(page.getByText("This page could not be found.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "페이지를 찾을 수 없어요" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "권한이 없어요" })).toHaveCount(0);
 });

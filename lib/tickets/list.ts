@@ -39,6 +39,7 @@ export type TicketList = {
   provider: AiProvider;
   view: TicketView;
   views: TicketView[];
+  /** 뷰별 전체 개수(긴급도·상태 필터와 무관). */
   counts: Partial<Record<TicketView, number>>;
   rows: TicketRow[];
   /** 필터를 건 전체 개수(rows는 LIST_CAP까지). */
@@ -105,6 +106,8 @@ export async function listTickets(db: Db, input: ListInput): Promise<TicketList>
       urgency.length ? inArray(tickets.urgency, urgency) : undefined,
       status.length ? inArray(tickets.status, status) : undefined,
     );
+  // 탭 뱃지 개수는 필터와 상관없는 뷰 전체 개수다(제품 결정 5-8). 필터를 걸면 화면이 "N건 중 M건"으로 보여 준다.
+  const unfiltered = (v: TicketView) => and(eq(tickets.projectId, input.projectId), visibleTo(actor.userId!), viewWhere(v, actor, false));
 
   const targetUser = alias(user, "target_user");
   const assignee = alias(user, "assignee");
@@ -138,7 +141,7 @@ export async function listTickets(db: Db, input: ListInput): Promise<TicketList>
       .limit(LIST_CAP),
     Promise.all(
       views.map(async (v) => {
-        const [r] = await db.select({ n: sql<number>`count(*)::int` }).from(tickets).where(filters(v));
+        const [r] = await db.select({ n: sql<number>`count(*)::int` }).from(tickets).where(unfiltered(v));
         return [v, Number(r?.n ?? 0)] as const;
       }),
     ),

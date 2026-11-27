@@ -144,7 +144,7 @@ export function MarkdownEditor({
             title={item.label}
             disabled={!editor}
             onClick={() => editor && item.run(editor)}
-            className="inline-flex size-8 items-center justify-center rounded-md text-muted-text outline-none transition-colors hover:bg-sunken hover:text-text focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-pressed:bg-sunken aria-pressed:text-text disabled:opacity-50"
+            className="inline-flex size-8 items-center justify-center rounded-md pointer-coarse:size-11 text-muted-text outline-none transition-colors hover:bg-sunken hover:text-text focus-visible:ring-[3px] focus-visible:ring-ring/50 aria-pressed:bg-sunken aria-pressed:text-text disabled:opacity-50"
           >
             <item.icon className="size-4" aria-hidden />
           </button>
@@ -155,7 +155,7 @@ export function MarkdownEditor({
           title="이미지 첨부"
           disabled={!editor}
           onClick={() => fileInput.current?.click()}
-          className="inline-flex size-8 items-center justify-center rounded-md text-muted-text outline-none transition-colors hover:bg-sunken hover:text-text focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
+          className="inline-flex size-8 items-center justify-center rounded-md pointer-coarse:size-11 text-muted-text outline-none transition-colors hover:bg-sunken hover:text-text focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:opacity-50"
         >
           <ImagePlus className="size-4" aria-hidden />
         </button>

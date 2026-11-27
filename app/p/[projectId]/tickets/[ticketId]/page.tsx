@@ -1,4 +1,5 @@
-import { Suspense } from "react";
+import { cache, Suspense } from "react";
+import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { env } from "@/lib/env";
@@ -28,8 +29,23 @@ import { TicketChip } from "@/components/ticket/ticket-chip";
 import { UrgencyBars } from "@/components/ticket/urgency-bars";
 import { ActionsPanel } from "@/components/ticket/actions-panel";
 import { LiveAnnouncer } from "@/components/ticket/live-announcer";
+import { BackToList } from "@/components/ticket/back-to-list";
+import { josa } from "@/lib/ko";
 
-export const metadata = { title: "티켓" };
+// 메타데이터와 화면이 같은 요청 안에서 한 번만 읽도록 묶는다.
+const loadDetail = cache(async (projectId: string, ticketId: string) => {
+  const user = await getSessionUser();
+  if (!user) return { user: null, detail: null };
+  return { user, detail: await getTicketDetail(db, { projectId, ticketId, userId: user.id }) };
+});
+
+/** 탭 제목: "#12 제목 · MyProjectManager". 볼 수 없는 티켓이면 일반 제목(제목을 흘리지 않는다). */
+export async function generateMetadata({ params }: PageProps<"/p/[projectId]/tickets/[ticketId]">): Promise<Metadata> {
+  const { projectId, ticketId } = await params;
+  const { detail } = await loadDetail(projectId, ticketId);
+  if (!detail) return { title: "티켓" };
+  return { title: detail.ticket.number != null ? `${ticketRef(detail.ticket.number)} ${detail.ticket.title}` : detail.ticket.title };
+}
 
 
 export default function TicketPage({ params }: PageProps<"/p/[projectId]/tickets/[ticketId]">) {
@@ -42,9 +58,8 @@ export default function TicketPage({ params }: PageProps<"/p/[projectId]/tickets
 
 async function TicketScreen({ params }: { params: PageProps<"/p/[projectId]/tickets/[ticketId]">["params"] }) {
   const { projectId, ticketId } = await params;
-  const user = await getSessionUser();
+  const { user, detail } = await loadDetail(projectId, ticketId);
   if (!user) redirect("/login");
-  const detail = await getTicketDetail(db, { projectId, ticketId, userId: user.id });
   if (!detail) notFound();
   return <TicketView d={detail} traceBase={env.LANGFUSE_BASEURL ?? null} />;
 }
@@ -92,7 +107,7 @@ function WithdrawnNotice({ d }: { d: TicketDetail }) {
   return (
     <section aria-label="철회" className="rise flex flex-col gap-3 rounded-[14px] border border-line bg-surface p-6" style={fadeUpDelay(1)}>
       <p className="text-base font-semibold">
-        {kind === "joined_duplicate" ? "기존 티켓에 합류했어요" : `${WITHDRAW_LABEL[kind]}으로 보고 철회했어요`}
+        {kind === "joined_duplicate" ? "기존 티켓에 합류했어요" : `${josa(WITHDRAW_LABEL[kind], "으로/로")} 보고 철회했어요`}
       </p>
       {d.joined ? (
         <>
@@ -120,7 +135,7 @@ const TURN_ANNOUNCE: Record<string, string> = {
 function announcement(d: TicketDetail): string {
   const t = d.ticket;
   const turn = d.openTurn ? TURN_ANNOUNCE[d.openTurn.kind] : undefined;
-  const parts = [turn ?? `티켓 상태가 ${STATUS_LABEL[t.status]}(으)로 바뀌었어요`];
+  const parts = [turn ?? `티켓 상태가 ${josa(STATUS_LABEL[t.status], "으로/로")} 바뀌었어요`];
   if (d.summary) parts.push("정리본이 준비됐어요");
   return parts.join(". ");
 }
@@ -143,12 +158,28 @@ function TicketView({ d, traceBase }: { d: TicketDetail; traceBase: string | nul
       <LiveAnnouncer message={announcement(d)} />
       <article className="flex min-w-0 flex-col gap-8 px-6 py-10 sm:px-12">
         <header className="rise flex flex-col gap-3">
+          <BackToList projectId={d.project.id} />
           <div className="flex items-center gap-2.5 font-mono text-[13px] text-faint">
             <span>{ticketRef(t.number)}</span>
             <span aria-hidden>·</span>
             <span className="font-sans">{CATEGORY_LABEL[t.category]}</span>
           </div>
           <h1 className="text-[30px] font-semibold leading-[1.35] tracking-[-0.01em] [overflow-wrap:anywhere]">{t.title}</h1>
+          {/* 좁은 화면에서는 속성 패널이 맨 아래로 가므로, 핵심 값과 바로 가기를 제목 밑에 둔다. */}
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm lg:hidden">
+            <StatusText status={t.status} />
+            <span className="inline-flex items-center gap-1.5 text-muted-text">
+              <UrgencyBars level={URGENCY_LEVEL[t.urgency]} />
+              {URGENCY_LABEL[t.urgency]}
+            </span>
+            <span className="text-muted-text">
+              {target.kind === "lead" ? "리드 큐" : target.label}
+              {assignee && ` · ${assignee}`}
+            </span>
+            <a href="#ticket-info" className="ml-auto text-[13px] text-brand underline-offset-4 hover:underline pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center">
+              {staff ? "처리 · 정보로" : "정보로"}
+            </a>
+          </div>
         </header>
 
         <div className="flex flex-col gap-6 empty:hidden" style={fadeUpDelay(1)}>
@@ -193,7 +224,7 @@ function TicketView({ d, traceBase }: { d: TicketDetail; traceBase: string | nul
         </section>
       </article>
 
-      <aside aria-label="티켓 정보" className="flex flex-col gap-7 border-line px-6 pb-12 sm:px-12 lg:border-l lg:px-8 lg:py-10">
+      <aside id="ticket-info" aria-label="티켓 정보" className="flex flex-col gap-7 border-line px-6 pb-12 sm:px-12 lg:border-l lg:px-8 lg:py-10">
         {staff && (
           <ActionsPanel
             key={`${t.id}:${t.version}`}

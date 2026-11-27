@@ -13,9 +13,9 @@ import type { ProjectSummary } from "@/lib/projects/admin";
 function Card({ title, id, children }: { title: string; id: string; children: React.ReactNode }) {
   return (
     <section aria-labelledby={id} className="flex flex-col gap-3 rounded-[14px] border border-line bg-surface p-5">
-      <h2 id={id} className="text-[17px] font-semibold">
+      <h3 id={id} className="text-[17px] font-semibold">
         {title}
-      </h2>
+      </h3>
       {children}
     </section>
   );
